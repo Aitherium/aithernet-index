@@ -1,0 +1,29 @@
+{
+  "id": "neocities.org",
+  "kind": "site",
+  "title": "Neocities",
+  "url": "https://neocities.org",
+  "tags": [
+    "personal-web",
+    "hosting",
+    "gardens"
+  ],
+  "names": [
+    "neocities.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://neocities.org"
+  },
+  "provenance": {
+    "added_by": "github:aither-wzns",
+    "sources": [
+      "https://neocities.org"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
