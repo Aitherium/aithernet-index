@@ -1,0 +1,29 @@
+{
+  "id": "docs.python.org",
+  "kind": "site",
+  "title": "Python documentation",
+  "url": "https://docs.python.org/3/",
+  "tags": [
+    "python",
+    "docs",
+    "reference"
+  ],
+  "names": [
+    "python-docs.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://docs.python.org/3/"
+  },
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://docs.python.org/3/"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "http-200"
+    }
+  }
+}

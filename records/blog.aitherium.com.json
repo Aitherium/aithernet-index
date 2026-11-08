@@ -1,0 +1,33 @@
+{
+  "id": "blog.aitherium.com",
+  "kind": "site",
+  "title": "Aitherium blog",
+  "url": "https://blog.aitherium.com",
+  "tags": [
+    "blog"
+  ],
+  "names": [
+    "blog.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://blog.aitherium.com"
+  },
+  "edges": [
+    {
+      "rel": "owned_by",
+      "to": "org_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://blog.aitherium.com"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "http-200"
+    }
+  }
+}

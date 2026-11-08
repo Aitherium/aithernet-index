@@ -1,0 +1,36 @@
+{
+  "id": "gate_shadowbroker_infonet",
+  "kind": "gate",
+  "title": "ShadowBroker InfoNet gates (opt-in bridge)",
+  "tags": [
+    "shadowbroker",
+    "infonet",
+    "tor",
+    "reticulum",
+    "osint"
+  ],
+  "names": [
+    "infonet.aither"
+  ],
+  "route": {
+    "type": "relay-gate",
+    "target": "aithernet://infonet"
+  },
+  "edges": [
+    {
+      "rel": "bridges",
+      "to": "org_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://aitherium.com"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "owner-asserted"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "org_aitherium",
+  "kind": "org",
+  "title": "Aitherium",
+  "url": "https://aitherium.com",
+  "tags": [
+    "aitherium",
+    "company"
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://aitherium.com"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "owner-asserted"
+    }
+  }
+}

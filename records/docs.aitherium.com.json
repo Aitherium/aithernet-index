@@ -1,0 +1,34 @@
+{
+  "id": "docs.aitherium.com",
+  "kind": "site",
+  "title": "Aitherium docs",
+  "url": "https://docs.aitherium.com",
+  "tags": [
+    "docs",
+    "aitheros"
+  ],
+  "names": [
+    "docs.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://docs.aitherium.com"
+  },
+  "edges": [
+    {
+      "rel": "owned_by",
+      "to": "org_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://docs.aitherium.com"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "http-200"
+    }
+  }
+}

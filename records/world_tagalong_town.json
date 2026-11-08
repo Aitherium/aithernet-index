@@ -1,0 +1,34 @@
+{
+  "id": "world_tagalong_town",
+  "kind": "world",
+  "title": "Tagalong Town (Pike Place twins)",
+  "tags": [
+    "tagalong",
+    "simulation",
+    "residents"
+  ],
+  "names": [
+    "tagalong.aither"
+  ],
+  "route": {
+    "type": "world",
+    "target": "aithernet://tagalong"
+  },
+  "edges": [
+    {
+      "rel": "part_of",
+      "to": "org_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://aitherium.com"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "owner-asserted"
+    }
+  }
+}
