@@ -147,7 +147,37 @@ def validate(records: Iterable[Record], today: Optional[_dt.date] = None) -> "li
             else:
                 if when > today:
                     out.append(Finding("NI008", rid, f"validated.at {when} is in the future"))
+        seen = set()
+        for v in prov.get("vouches") or []:
+            who = (v or {}).get("by")
+            if not who or not (v or {}).get("at"):
+                out.append(Finding("NI009", rid, "a vouch needs by and at"))
+            elif who == prov.get("added_by"):
+                out.append(Finding("NI009", rid, f"{who} cannot vouch for their own submission"))
+            elif who in seen:
+                out.append(Finding("NI009", rid, f"{who} vouched twice"))
+            seen.add(who)
     return out
+
+
+# Trust is COMPUTED from evidence in the record, never typed in by a contributor.
+# A submitter can claim anything; only these facts move an entry up a tier.
+TIERS = {0: "submitted", 1: "reachable", 2: "owner-proven", 3: "vouched"}
+_REACH_METHODS = {"http-200"}
+_OWNER_METHODS = {"well-known", "owner-asserted"}
+
+
+def trust(r: Record) -> int:
+    """0 submitted · 1 reachable (bot fetched it) · 2 owner-proven (the site serves
+    /.well-known/aithernet.json naming this id) · 3 vouched (reachable or better AND
+    at least two distinct people other than the submitter vouched)."""
+    method = (r.provenance.get("validated") or {}).get("method", "")
+    tier = 2 if method in _OWNER_METHODS else 1 if method in _REACH_METHODS else 0
+    vouchers = {v.get("by") for v in r.provenance.get("vouches") or [] if v.get("by")}
+    vouchers.discard(r.provenance.get("added_by"))
+    if tier >= 1 and len(vouchers) >= 2:
+        tier = 3
+    return tier
 
 
 class Index:

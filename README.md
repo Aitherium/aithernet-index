@@ -18,16 +18,22 @@ An unknown name returns 404. The resolver never guesses.
 
 ## Add a site
 
-1. Copy any file in `records/` to `records/<id>.json`, where the file name equals the `id`.
-2. Fill in `kind` (site, garden, room, space, org, service, gate, world, dataset), the
-   `title`, an https `url`, `tags`, and optionally `names` (`*.aither`, lowercase) with a `route`.
-3. Link it to other entries with `edges` (`links_to`, `part_of`, `mirrors`, `about`...).
-   That is how webrings work here.
-4. Say where you found it in `provenance.sources`, and how you checked it in
-   `provenance.validated` (`at`, `by`, `method`).
-5. Run `python check.py`, which must print 0 findings, then open a pull request.
+Open an issue with **Submit a site**. A bot turns it into a pull request, checks that
+the URL answers, and a maintainer reviews it. You can also open the PR yourself. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-CI runs the same check. A failing index is never published.
+## Trust
+
+Every entry shows a trust tier computed from evidence:
+
+| tier | meaning |
+|---|---|
+| submitted | someone suggested it |
+| reachable | the bot fetched it |
+| owner-proven | the owner serves `/.well-known/aithernet.json` naming it |
+| vouched | two other people vouched for it |
+
+Why it works this way, and what comes next: [REPUTATION.md](REPUTATION.md).
 
 ## Licence
 

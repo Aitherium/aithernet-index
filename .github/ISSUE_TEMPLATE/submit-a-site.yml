@@ -1,0 +1,59 @@
+name: Submit a site
+description: Suggest a website, digital garden, room or space for the AitherNet Index.
+title: "Submit: "
+labels: ["submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bot turns this into a pull request. It checks that the URL answers, stamps what it
+        could verify, and a maintainer reviews it. Own the site? Serve
+        `/.well-known/aithernet.json` with `{"records": ["<id>"]}` and the entry is marked
+        **owner-proven**.
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The https:// address.
+      placeholder: https://example.com
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: Title
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: [site, garden, room, space, dataset, org, service]
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Comma separated, up to 8.
+      placeholder: python, docs, reference
+  - type: input
+    id: keyword
+    attributes:
+      label: Keyword
+      description: Optional .aither keyword, like an old AOL keyword.
+      placeholder: my-site.aither
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it belongs
+      description: What it is and why someone would want to find it.
+    validations:
+      required: true
+  - type: checkboxes
+    id: honest
+    attributes:
+      label: Honesty
+      options:
+        - label: I am not paid to submit this, or I say so above.
+          required: true

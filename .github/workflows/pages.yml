@@ -22,6 +22,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: python check.py --self-test
+      - run: python intake.py --self-test
       - run: python check.py
       - run: python build_site.py --out _site
       - uses: actions/upload-pages-artifact@v3

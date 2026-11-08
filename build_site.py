@@ -45,7 +45,8 @@ def _sha(root: Path) -> str:
 def _record_dict(r: netindex.Record) -> dict:
     return {"id": r.id, "kind": r.kind, "title": r.title, "url": r.url, "tags": r.tags,
             "names": r.names, "route": r.route, "edges": r.edges,
-            "validated": r.provenance.get("validated", {})}
+            "validated": r.provenance.get("validated", {}),
+            "trust": netindex.TIERS[netindex.trust(r)]}
 
 
 def _page(records: list, sha: str) -> str:
@@ -57,10 +58,11 @@ def _page(records: list, sha: str) -> str:
         tags = " ".join(f'<span class="tag">{e(t)}</span>' for t in r.tags)
         edges = "; ".join(f"{e(x.get('rel', ''))} &rarr; {e(x.get('to', ''))}" for x in r.edges)
         v = r.provenance.get("validated", {})
+        tier = netindex.TIERS[netindex.trust(r)]
         rows.append(f"<tr><td>{e(r.kind)}</td><td>{link}<div class='t'>{tags}</div></td>"
                     f"<td>{names}</td><td class='m'>{edges}</td>"
                     f"<td class='m'>{e(str(v.get('at', '')))} &middot; "
-                    f"{e(str(v.get('method', '')))}</td></tr>")
+                    f"{e(str(v.get('method', '')))} &middot; <b>{e(tier)}</b></td></tr>")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AitherNet Index</title>
@@ -105,6 +107,7 @@ def build(root: Path, out: Path) -> int:
     for name in idx.names:
         hit = idx.resolve(name)
         hit["source_sha"] = sha
+        hit["trust"] = netindex.TIERS[netindex.trust(idx.records[hit["id"]])]
         (out / "n" / f"{name}.json").write_text(json.dumps(hit, indent=1), encoding="utf-8")
     (out / "index.html").write_text(_page(records, sha), encoding="utf-8")
     (out / "CNAME").write_text(DOMAIN + "\n", encoding="utf-8")

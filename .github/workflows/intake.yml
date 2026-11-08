@@ -1,0 +1,64 @@
+name: intake
+on:
+  issues:
+    types: [opened, edited]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: intake-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  intake:
+    if: contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE: ${{ github.event.issue.number }}
+      LOGIN: ${{ github.event.issue.user.login }}
+      MIN_ACCOUNT_DAYS: "30"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: account age (Sybil friction)
+        id: age
+        run: |
+          created=$(gh api "users/${LOGIN}" -q .created_at)
+          days=$(( ( $(date +%s) - $(date -d "$created" +%s) ) / 86400 ))
+          echo "days=$days" >> "$GITHUB_OUTPUT"
+          if [ "$days" -lt "$MIN_ACCOUNT_DAYS" ]; then
+            gh issue edit "$ISSUE" --add-label needs-human
+            gh issue comment "$ISSUE" --body "Thanks! Accounts younger than ${MIN_ACCOUNT_DAYS} days are reviewed by a maintainer by hand instead of by the bot."
+            exit 1
+          fi
+      - name: build the record
+        id: rec
+        run: |
+          id=$(python intake.py --event "$GITHUB_EVENT_PATH") || {
+            gh issue comment "$ISSUE" --body "The bot could not read this submission. Check that the URL is https:// and the keyword looks like my-site.aither, then edit the issue."
+            exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+      - name: verify (stamps only what it can see)
+        env:
+          RID: ${{ steps.rec.outputs.id }}
+        run: python verify.py --ids "$RID" --stamp || true
+      - name: check
+        run: python check.py
+      - name: open the pull request
+        env:
+          RID: ${{ steps.rec.outputs.id }}
+        run: |
+          git config user.name "aithernet-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="submit/${ISSUE}"
+          git switch -c "$branch"
+          git add "records/${RID}.json"
+          git commit -m "submit: ${RID} (closes #${ISSUE})"
+          git push -f origin "$branch"
+          gh pr create --head "$branch" --title "submit: ${RID}" \
+            --body "Closes #${ISSUE}. Submitted by @${LOGIN}; trust starts at the evidence verify.py could see." \
+            --label submission || gh pr edit "$branch" --add-label submission
+          gh issue comment "$ISSUE" --body "Opened a pull request for \`${RID}\`. A maintainer will review it."

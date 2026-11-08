@@ -51,6 +51,8 @@ def _self_test() -> int:
         "http route": ([{**good, "route": {"type": "web", "target": "http://a"}}], {"NI007"}),
         "dangling edge": ([{**good, "edges": [{"rel": "links_to", "to": "nope"}]}], {"NI004"}),
         "no provenance": ([{**good, "provenance": {}}], {"NI008"}),
+        "self vouch": ([{**good, "provenance": {**good["provenance"],
+                        "vouches": [{"by": "t", "at": "2026-01-02"}]}}], {"NI009"}),
         "future validation": ([{**good, "provenance": {**good["provenance"], "validated":
                                {"at": "2999-01-01", "by": "t", "method": "m"}}}], {"NI008"}),
     }
@@ -64,6 +66,13 @@ def _self_test() -> int:
         passed = got == want
         ok &= passed
         print(f"{'PASS' if passed else 'FAIL'} {label}: want {sorted(want)} got {sorted(got)}")
+    v2 = {**good, "provenance": {**good["provenance"], "validated":
+          {"at": "2026-01-01", "by": "t", "method": "http-200"},
+          "vouches": [{"by": "u", "at": "x"}, {"by": "w", "at": "x"}]}}
+    tiers = [netindex.trust(netindex._parse(None, x)) for x in (good, v2)]
+    t_ok = tiers == [0, 3]
+    ok &= t_ok
+    print(f"{'PASS' if t_ok else 'FAIL'} trust tiers: want [0, 3] got {tiers}")
     idx = netindex.Index([netindex._parse(None, good)])
     r_ok = idx.resolve("A.aither.") is not None and idx.resolve("zz.aither") is None
     print(f"{'PASS' if r_ok else 'FAIL'} resolve hit/NXDOMAIN")
