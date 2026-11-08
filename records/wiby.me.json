@@ -1,0 +1,29 @@
+{
+  "id": "wiby.me",
+  "kind": "site",
+  "title": "Wiby",
+  "url": "https://wiby.me",
+  "tags": [
+    "search",
+    "old-web",
+    "small-web"
+  ],
+  "names": [
+    "wiby.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://wiby.me"
+  },
+  "provenance": {
+    "added_by": "github:aither-wzns",
+    "sources": [
+      "https://wiby.me"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
