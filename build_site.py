@@ -59,13 +59,15 @@ def _page(records: list, sha: str) -> str:
         edges = "; ".join(f"{e(x.get('rel', ''))} &rarr; {e(x.get('to', ''))}" for x in r.edges)
         v = r.provenance.get("validated", {})
         tier = netindex.TIERS[netindex.trust(r)]
-        rows.append(f"<tr><td>{e(r.kind)}</td><td>{link}<div class='t'>{tags}</div></td>"
+        rows.append(f"<tr id=\"{e(r.id, quote=True)}\"><td>{e(r.kind)}</td><td>{link}<div class='t'>{tags}</div></td>"
                     f"<td>{names}</td><td class='m'>{edges}</td>"
                     f"<td class='m'>{e(str(v.get('at', '')))} &middot; "
                     f"{e(str(v.get('method', '')))} &middot; <b>{e(tier)}</b></td></tr>")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AitherNet Index</title>
+<link rel="search" type="application/opensearchdescription+xml" title="AitherNet"
+ href="/opensearch.xml">
 <style>
 :root{{--bg:#fbfaf7;--fg:#1d1b18;--mute:#6b665d;--line:#e4e0d8;--acc:#3b5bdb}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#141311;--fg:#ece8e1;--mute:#9a948a;
@@ -80,12 +82,70 @@ a{{color:var(--acc)}} code{{font-size:13px}} .m{{color:var(--mute);font-size:13p
 </style></head><body>
 <h1>AitherNet Index</h1>
 <p>A hand-curated map of the internet, kept in git. Every entry records who checked it
-and how. Look up a keyword at <code>/n/&lt;name&gt;.json</code>. Built from {e(sha[:12])}.</p>
+and how. Go to a keyword at <code>/go/&lt;keyword&gt;</code>; look one up at
+<code>/n/&lt;name&gt;.json</code>. Built from {e(sha[:12])}.</p>
 <div class="wrap"><table><thead><tr><th>kind</th><th>entry</th><th>keywords</th>
 <th>links</th><th>checked</th></tr></thead><tbody>
 {''.join(rows)}
 </tbody></table></div></body></html>
 """
+
+
+_GO_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex"><title>{title}</title>
+<meta http-equiv="refresh" content="0; url={href}"><link rel="canonical" href="{href}">
+</head><body><p>Going to <a href="{href}">{title}</a>&hellip;</p></body></html>
+"""
+
+# /go/?q=<keyword> is the browser-keyword entry point. The site is static, so the page
+# resolves in the browser: fetch /n/<q>.aither.json and follow a web route; anything
+# else lands on the directory. Only an https target is ever followed.
+_GO_INDEX = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>AitherNet keyword</title></head>
+<body style="font:15px system-ui;padding:24px"><p id="m">Resolving&hellip;</p><script>
+(async () => {
+  const m = document.getElementById("m");
+  let q = (new URLSearchParams(location.search).get("q") || "").trim().toLowerCase();
+  q = q.replace(/\\.aither$/, "");
+  if (!/^[a-z0-9-]{2,40}$/.test(q)) { m.textContent = "Type a keyword, like neocities."; return; }
+  try {
+    const r = await fetch("/n/" + q + ".aither.json");
+    if (!r.ok) { m.textContent = q + ".aither is not in the index yet."; return; }
+    const hit = await r.json();
+    if (hit.type === "web" && /^https:\\/\\//.test(hit.target)) {
+      location.replace(hit.target); return; }
+    location.replace("/#" + encodeURIComponent(hit.id));
+  } catch (e) { m.textContent = "Could not reach the index."; }
+})();
+</script></body></html>
+"""
+
+_OPENSEARCH = """<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+<ShortName>AitherNet</ShortName><Description>Go to an .aither keyword</Description>
+<InputEncoding>UTF-8</InputEncoding>
+<Url type="text/html" template="https://{domain}/go/?q={{searchTerms}}"/>
+</OpenSearchDescription>
+"""
+
+
+def _write_go(out: Path, idx: "netindex.Index") -> None:
+    """/go/<keyword>/ redirects for every .aither name, plus /go/?q= and opensearch.xml."""
+    (out / "go").mkdir(parents=True, exist_ok=True)
+    (out / "go" / "index.html").write_text(_GO_INDEX, encoding="utf-8")
+    (out / "opensearch.xml").write_text(_OPENSEARCH.format(domain=DOMAIN), encoding="utf-8")
+    for name, rid in idx.names.items():
+        rec = idx.records[rid]
+        target = str(rec.route.get("target", ""))
+        web = rec.route.get("type") == "web" and target.startswith("https://")
+        href = target if web else f"/#{rid}"
+        page = out / "go" / name[: -len(netindex.NAME_SUFFIX)]
+        page.mkdir(parents=True, exist_ok=True)
+        (page / "index.html").write_text(
+            _GO_PAGE.format(title=html.escape(rec.title),
+                            href=html.escape(href, quote=True)),
+            encoding="utf-8")
 
 
 def build(root: Path, out: Path) -> int:
@@ -110,6 +170,7 @@ def build(root: Path, out: Path) -> int:
         hit["trust"] = netindex.TIERS[netindex.trust(idx.records[hit["id"]])]
         (out / "n" / f"{name}.json").write_text(json.dumps(hit, indent=1), encoding="utf-8")
     (out / "index.html").write_text(_page(records, sha), encoding="utf-8")
+    _write_go(out, idx)
     (out / "CNAME").write_text(DOMAIN + "\n", encoding="utf-8")
     print(f"built {out}: {len(records)} records, {len(idx.names)} names, sha {sha[:12]}")
     return 0
