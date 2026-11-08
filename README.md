@@ -16,6 +16,24 @@ curl https://index.aitherium.com/n/docs.aither.json
 
 An unknown name returns 404. The resolver never guesses.
 
+## Use it from the shell: the awindex brick
+
+```bash
+pip install git+https://github.com/Aitherium/aithernet-index
+awindex resolve neocities          # route + trust tier; exit 1 = not indexed
+awindex search "digital garden"
+awindex show neocities.org
+```
+
+It reads a local checkout when there is one, and https://index.aitherium.com when there
+isn't.
+
+## Use it from the browser
+
+Add **AitherNet** as a search engine (the site advertises `opensearch.xml`) with the
+keyword `aither`, then type `aither neocities`. Or go straight to
+`https://index.aitherium.com/go/<keyword>`.
+
 ## Add a site
 
 Open an issue with **Submit a site**. A bot turns it into a pull request, checks that

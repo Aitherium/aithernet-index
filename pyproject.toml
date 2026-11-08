@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awindex"
+version = "0.1.0"
+description = "Resolve .aither keywords and read the AitherNet Index (index.aitherium.com)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Aitherium"}]
+
+[project.urls]
+Homepage = "https://index.aitherium.com"
+Source = "https://github.com/Aitherium/aithernet-index"
+
+[project.scripts]
+awindex = "awindex.cli:main"
+
+[tool.setuptools]
+packages = ["awindex"]
