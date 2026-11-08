@@ -1,0 +1,29 @@
+{
+  "id": "ring_digital-gardeners",
+  "kind": "dataset",
+  "title": "Digital Gardeners webring",
+  "url": "https://github.com/MaggieAppleton/digital-gardeners",
+  "tags": [
+    "digital-garden",
+    "webring",
+    "tools-for-thought"
+  ],
+  "names": [
+    "gardens.aither"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/MaggieAppleton/digital-gardeners"
+  },
+  "provenance": {
+    "added_by": "import:digital-gardeners (MIT, Maggie Appleton)",
+    "sources": [
+      "https://github.com/MaggieAppleton/digital-gardeners"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
