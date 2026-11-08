@@ -1,0 +1,29 @@
+{
+  "id": "notes.salman.io",
+  "kind": "garden",
+  "title": "Salman Ansari's garden",
+  "url": "https://notes.salman.io/",
+  "tags": [
+    "digital-garden",
+    "start-ups",
+    "engineering"
+  ],
+  "edges": [
+    {
+      "rel": "part_of",
+      "to": "ring_digital-gardeners"
+    }
+  ],
+  "provenance": {
+    "added_by": "import:digital-gardeners (MIT, Maggie Appleton)",
+    "sources": [
+      "https://github.com/MaggieAppleton/digital-gardeners",
+      "https://notes.salman.io/"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}

@@ -38,3 +38,7 @@ Why it works this way, and what comes next: [REPUTATION.md](REPUTATION.md).
 ## Licence
 
 Records: CC BY 4.0. Code: MIT. See `LICENSE`.
+
+The digital-garden webring (`gardens.aither`) was seeded from
+[MaggieAppleton/digital-gardeners](https://github.com/MaggieAppleton/digital-gardeners)
+(MIT, Maggie Appleton); every imported garden was live-checked first.

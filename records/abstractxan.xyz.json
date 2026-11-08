@@ -1,0 +1,30 @@
+{
+  "id": "abstractxan.xyz",
+  "kind": "garden",
+  "title": "Abstractxan's garden",
+  "url": "https://abstractxan.xyz",
+  "tags": [
+    "digital-garden",
+    "tech",
+    "art",
+    "curating-resources"
+  ],
+  "edges": [
+    {
+      "rel": "part_of",
+      "to": "ring_digital-gardeners"
+    }
+  ],
+  "provenance": {
+    "added_by": "import:digital-gardeners (MIT, Maggie Appleton)",
+    "sources": [
+      "https://github.com/MaggieAppleton/digital-gardeners",
+      "https://abstractxan.xyz"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
