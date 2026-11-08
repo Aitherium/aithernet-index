@@ -27,7 +27,7 @@ DEFAULT_ROOT = Path(__file__).resolve().parent / "records"
 
 # garden = a personal digital garden (Neocities-style); room = an AitherRelay channel;
 # space = an AitherSpace. A .aither name on any of them is its AOL-style keyword.
-KINDS = {"site", "service", "org", "node", "gate", "world", "dataset",
+KINDS = {"site", "service", "org", "gate", "world", "dataset",
          "garden", "room", "space"}
 ROUTE_TYPES = {"web", "aithernet", "relay-gate", "world", "relay-room", "space"}
 EDGE_RELS = {"owned_by", "links_to", "mirrors", "part_of", "bridges", "about", "alternative_to"}

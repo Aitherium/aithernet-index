@@ -58,7 +58,13 @@ jobs:
           git add "records/${RID}.json"
           git commit -m "submit: ${RID} (closes #${ISSUE})"
           git push -f origin "$branch"
-          gh pr create --head "$branch" --title "submit: ${RID}" \
-            --body "Closes #${ISSUE}. Submitted by @${LOGIN}; trust starts at the evidence verify.py could see." \
-            --label submission || gh pr edit "$branch" --add-label submission
-          gh issue comment "$ISSUE" --body "Opened a pull request for \`${RID}\`. A maintainer will review it."
+          if gh pr create --head "$branch" --title "submit: ${RID}" \
+              --body "Closes #${ISSUE}. Submitted by @${LOGIN}; trust starts at the evidence verify.py could see." \
+              --label submission; then
+            gh issue comment "$ISSUE" --body "Opened a pull request for \`${RID}\`. A maintainer will review it."
+          else
+            # Actions may not be allowed to open PRs on this repo: hand a maintainer the link.
+            url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+            gh issue edit "$ISSUE" --add-label needs-human
+            gh issue comment "$ISSUE" --body "Record \`${RID}\` is ready on branch \`${branch}\`. Maintainer: open the PR here: ${url}"
+          fi
