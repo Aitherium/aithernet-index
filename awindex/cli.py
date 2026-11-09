@@ -4,6 +4,7 @@
     awindex search "digital garden"       # matching entries
     awindex show neocities.org            # one record with its evidence
     awindex check                         # validate a checkout (exit 0 / 1 / 2)
+    awindex mcp                           # serve it to MCP agents over stdio
     awindex --self-test
 
 Reads a local checkout when one exists (records/ beside the package, or
@@ -150,11 +151,15 @@ def main(argv: Optional[list] = None) -> int:
     s.add_argument("--limit", type=int, default=20)
     sub.add_parser("show").add_argument("id")
     sub.add_parser("check")
+    sub.add_parser("mcp", help="serve the index to MCP agents over stdio")
     a = ap.parse_args(argv)
     if a.self_test:
         return self_test()
     if a.cmd == "check":
         return cmd_check(a.root)
+    if a.cmd == "mcp":
+        from .mcp_server import main as mcp_main
+        return mcp_main(a.root, a.web)
     idx = None if a.web else _local(a.root)
     if a.cmd == "resolve":
         return cmd_resolve(a.name, idx)
