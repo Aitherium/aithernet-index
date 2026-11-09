@@ -73,6 +73,15 @@ def _self_test() -> int:
     t_ok = tiers == [0, 3]
     ok &= t_ok
     print(f"{'PASS' if t_ok else 'FAIL'} trust tiers: want [0, 3] got {tiers}")
+    def _ev(e):
+        return netindex.trust(netindex._parse(None, {**v2, "provenance": {
+            **v2["provenance"], "evidence": e}}))
+    caps = [_ev({"sanctions_hits": 1}), _ev({"threat_level": "high"}),
+            _ev({"domain_age_days": 5}), _ev({"domain_age_days": 4000}),
+            _ev({"shared_host": "github.io", "threat_level": "HIGH"})]
+    e_ok = caps == [0, 0, 1, 3, 3]
+    ok &= e_ok
+    print(f"{'PASS' if e_ok else 'FAIL'} osint evidence caps: want [0, 0, 1, 3, 3] got {caps}")
     idx = netindex.Index([netindex._parse(None, good)])
     r_ok = idx.resolve("A.aither.") is not None and idx.resolve("zz.aither") is None
     print(f"{'PASS' if r_ok else 'FAIL'} resolve hit/NXDOMAIN")
