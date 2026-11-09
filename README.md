@@ -19,7 +19,7 @@ An unknown name returns 404. The resolver never guesses.
 ## Use it from the shell: the awindex brick
 
 ```bash
-pip install git+https://github.com/Aitherium/aithernet-index
+pip install awindex
 awindex resolve neocities          # route + trust tier; exit 1 = not indexed
 awindex search "digital garden"
 awindex show neocities.org
