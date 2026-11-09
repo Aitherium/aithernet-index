@@ -1,0 +1,35 @@
+{
+  "id": "app.aitherium.com_spaces",
+  "kind": "space",
+  "title": "AitherSpaces directory",
+  "url": "https://app.aitherium.com/spaces",
+  "tags": [
+    "aitherspaces",
+    "spaces",
+    "community"
+  ],
+  "names": [
+    "spaces.aither"
+  ],
+  "route": {
+    "type": "space",
+    "target": "https://app.aitherium.com/spaces"
+  },
+  "edges": [
+    {
+      "rel": "part_of",
+      "to": "org_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "aither",
+    "sources": [
+      "https://app.aitherium.com/spaces"
+    ],
+    "validated": {
+      "at": "2026-11-08",
+      "by": "aither",
+      "method": "owner-asserted"
+    }
+  }
+}
