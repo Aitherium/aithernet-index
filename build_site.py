@@ -23,6 +23,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -46,7 +47,11 @@ def _record_dict(r: netindex.Record) -> dict:
     return {"id": r.id, "kind": r.kind, "title": r.title, "url": r.url, "tags": r.tags,
             "names": r.names, "route": r.route, "edges": r.edges,
             "validated": r.provenance.get("validated", {}),
-            "trust": netindex.TIERS[netindex.trust(r)]}
+            "trust": netindex.TIERS[netindex.trust(r)],
+            # Where it lives, for explorers (BeadSpace, agents): the URL's host, and the
+            # OSINT evidence (domain age, CT, sanctions, threat) that trust was judged on.
+            "host": (urlsplit(r.url).hostname or "") if r.url else "",
+            "evidence": r.provenance.get("evidence", {})}
 
 
 def _page(records: list, sha: str) -> str:
