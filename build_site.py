@@ -113,7 +113,7 @@ _GO_INDEX = """<!doctype html><html lang="en"><head><meta charset="utf-8">
     const r = await fetch("/n/" + q + ".aither.json");
     if (!r.ok) { m.textContent = q + ".aither is not in the index yet."; return; }
     const hit = await r.json();
-    if (hit.type === "web" && /^https:\\/\\//.test(hit.target)) {
+    if ((hit.type === "web" || hit.type === "space") && /^https:\\/\\//.test(hit.target)) {
       location.replace(hit.target); return; }
     location.replace("/#" + encodeURIComponent(hit.id));
   } catch (e) { m.textContent = "Could not reach the index."; }
@@ -138,7 +138,7 @@ def _write_go(out: Path, idx: "netindex.Index") -> None:
     for name, rid in idx.names.items():
         rec = idx.records[rid]
         target = str(rec.route.get("target", ""))
-        web = rec.route.get("type") == "web" and target.startswith("https://")
+        web = rec.route.get("type") in ("web", "space") and target.startswith("https://")
         href = target if web else f"/#{rid}"
         page = out / "go" / name[: -len(netindex.NAME_SUFFIX)]
         page.mkdir(parents=True, exist_ok=True)
