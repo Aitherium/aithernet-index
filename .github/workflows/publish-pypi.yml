@@ -1,0 +1,37 @@
+name: publish to PyPI
+# Manual only: a published version can never be replaced. Builds, installs the WHEEL
+# into a clean venv and runs it before uploading, then asserts the version resolves.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TWINE_USERNAME: __token__
+      TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: token present
+        run: '[ -n "$TWINE_PASSWORD" ] || { echo "PYPI_API_TOKEN is not visible to this repo"; exit 1; }'
+      - name: build
+        run: python -m pip install -q build twine && python -m build
+      - name: the wheel installs and runs
+        run: |
+          python -m venv /tmp/v && /tmp/v/bin/pip install -q dist/*.whl
+          cd /tmp && /tmp/v/bin/awindex --self-test && /tmp/v/bin/awindex --version
+      - name: not already on PyPI
+        run: |
+          v=$(python -c "import re;print(re.search(r'^version = \"(.+)\"', open('pyproject.toml').read(), re.M).group(1))")
+          if curl -sf "https://pypi.org/pypi/awindex/$v/json" >/dev/null; then echo "awindex $v already published"; exit 1; fi
+          echo "V=$v" >> "$GITHUB_ENV"
+      - name: upload
+        run: python -m twine upload --non-interactive dist/*
+      - name: the published version resolves
+        run: |
+          for i in $(seq 1 30); do pip download -q --no-deps "awindex==$V" -d /tmp/chk && exit 0; sleep 10; done
+          echo "awindex $V did not resolve on PyPI"; exit 1
