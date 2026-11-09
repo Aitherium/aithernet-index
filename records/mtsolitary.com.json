@@ -26,6 +26,13 @@
       "at": "2026-11-08",
       "by": "aithernet-bot",
       "method": "http-200"
+    },
+    "evidence": {
+      "by": "shadowbroker",
+      "at": "2026-11-08",
+      "domain_age_days": 2825,
+      "sanctions_hits": 0,
+      "threat_level": "LOW"
     }
   }
 }

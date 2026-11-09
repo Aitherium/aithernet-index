@@ -181,6 +181,17 @@ def trust(r: Record) -> int:
     vouchers.discard(r.provenance.get("added_by"))
     if tier >= 1 and len(vouchers) >= 2:
         tier = 3
+    # OSINT evidence (ShadowBroker: provenance.evidence) can only LOWER trust: a
+    # sanctions hit or a HIGH/CRITICAL threat level is tier 0, and a domain younger
+    # than 30 days never rises above `reachable`. A shared host carries no verdict.
+    ev = r.provenance.get("evidence") or {}
+    if not ev.get("shared_host"):
+        threat = str(ev.get("threat_level", "")).upper()
+        if ev.get("sanctions_hits", 0) > 0 or threat in ("HIGH", "CRITICAL"):
+            return 0
+        age = ev.get("domain_age_days")
+        if isinstance(age, (int, float)) and age < 30:
+            tier = min(tier, 1)
     return tier
 
 
