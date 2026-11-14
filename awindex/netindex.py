@@ -20,6 +20,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
@@ -31,11 +32,26 @@ DEFAULT_ROOT = Path(os.environ.get("AWINDEX_ROOT")
 
 # garden = a personal digital garden (Neocities-style); room = an AitherRelay channel;
 # space = an AitherSpace. A .aither name on any of them is its AOL-style keyword.
+# business = a place or company that wants to be found (hours, area, contact): its
+# facts live in ``listing`` and are published as schema.org data search engines and
+# AI agents read. Claiming one is the same owner proof as any record (well-known).
 KINDS = {"site", "service", "org", "gate", "world", "dataset",
-         "garden", "room", "space"}
+         "garden", "room", "space", "business"}
 ROUTE_TYPES = {"web", "aithernet", "relay-gate", "world", "relay-room", "space"}
 EDGE_RELS = {"owned_by", "links_to", "mirrors", "part_of", "bridges", "about", "alternative_to"}
 NAME_SUFFIX = ".aither"
+
+# listing: the facts a business wants found. Every field optional and capped (NI010).
+LISTING_TEXT = {"description": 500, "category": 60, "address": 200, "area_served": 120,
+                "phone": 40, "email": 120}
+LISTING_KEYS = set(LISTING_TEXT) | {"hours", "same_as", "geo"}
+_DAY = "(Mo|Tu|We|Th|Fr|Sa|Su)"
+_HHMM = "([01][0-9]|2[0-4]):[0-5][0-9]"
+# schema.org openingHours, e.g. "Mo-Fr 09:00-17:00" or "Sa,Su 10:00-14:00"
+HOURS_RE = re.compile(f"^{_DAY}([-,]{_DAY})* {_HHMM}-{_HHMM}$")
+PHONE_RE = re.compile("^[+]?[0-9][0-9 ()./-]{4,38}$")
+EMAIL_RE = re.compile("^[^@ <>\"']+@[^@ <>\"']+[.][A-Za-z]{2,}$")
+_CTRL = re.compile("[" + chr(0) + "-" + chr(31) + chr(127) + "]")
 
 
 @dataclass
@@ -59,6 +75,7 @@ class Record:
     route: dict = field(default_factory=dict)
     edges: list = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
+    listing: dict = field(default_factory=dict)
     path: Optional[Path] = None
 
 
@@ -73,6 +90,8 @@ def _parse(path: Path, raw: dict) -> Record:
         route=dict(raw.get("route") or {}),
         edges=list(raw.get("edges") or []),
         provenance=dict(raw.get("provenance") or {}),
+        listing=raw["listing"] if isinstance(raw.get("listing"), dict) else (
+            {"_invalid": True} if raw.get("listing") is not None else {}),
         path=path,
     )
 
@@ -161,6 +180,54 @@ def validate(records: Iterable[Record], today: Optional[_dt.date] = None) -> "li
             elif who in seen:
                 out.append(Finding("NI009", rid, f"{who} vouched twice"))
             seen.add(who)
+        out += listing_findings(rid, r.kind, r.url, r.listing)
+    return out
+
+
+def listing_findings(rid: str, kind: str, url: str, listing: dict) -> "list[Finding]":
+    """NI010: a listing holds only known, capped, well-formed facts."""
+    out: list = []
+    if kind == "business" and not url:
+        out.append(Finding("NI010", rid, "a business needs an https url (owner proof is per host)"))
+    if not listing:
+        return out
+    if listing.get("_invalid"):
+        return out + [Finding("NI010", rid, "listing must be an object")]
+    for k in sorted(set(listing) - LISTING_KEYS):
+        out.append(Finding("NI010", rid, f"unknown listing field {k!r}"))
+    for k, cap in LISTING_TEXT.items():
+        v = listing.get(k)
+        if v is None:
+            continue
+        if not isinstance(v, str) or not v.strip() or len(v) > cap or _CTRL.search(v):
+            out.append(Finding("NI010", rid, f"listing.{k} must be text of 1-{cap} chars"))
+    if isinstance(listing.get("phone"), str) and not PHONE_RE.match(listing["phone"]):
+        out.append(Finding("NI010", rid, "listing.phone is not a phone number"))
+    if isinstance(listing.get("email"), str) and not EMAIL_RE.match(listing["email"]):
+        out.append(Finding("NI010", rid, "listing.email is not an email address"))
+    hours = listing.get("hours")
+    if hours is not None:
+        if not isinstance(hours, list) or len(hours) > 14:
+            out.append(Finding("NI010", rid, "listing.hours must be a list of up to 14 entries"))
+        else:
+            for h in hours:
+                if not isinstance(h, str) or not HOURS_RE.match(h):
+                    out.append(Finding("NI010", rid, f"listing.hours {h!r} is not like 'Mo-Fr 09:00-17:00'"))
+    same = listing.get("same_as")
+    if same is not None:
+        if not isinstance(same, list) or len(same) > 10:
+            out.append(Finding("NI010", rid, "listing.same_as must be a list of up to 10 urls"))
+        else:
+            for u in same:
+                if not isinstance(u, str) or not u.startswith("https://") or len(u) > 300:
+                    out.append(Finding("NI010", rid, f"listing.same_as {u!r} must be an https url"))
+    geo = listing.get("geo")
+    if geo is not None:
+        lat = geo.get("lat") if isinstance(geo, dict) else None
+        lng = geo.get("lng") if isinstance(geo, dict) else None
+        nums = all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (lat, lng))
+        if not nums or not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            out.append(Finding("NI010", rid, "listing.geo needs numeric lat (-90..90) and lng (-180..180)"))
     return out
 
 

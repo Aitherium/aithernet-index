@@ -24,5 +24,15 @@
       "sanctions_hits": 0,
       "threat_level": "LOW"
     }
+  },
+  "listing": {
+    "description": "Builds AitherOS: an open, self-hostable platform that sets up the AI agent stack (models, memory, tools, agents) and the workspace it runs in, on hardware you choose.",
+    "category": "software",
+    "area_served": "Worldwide",
+    "same_as": [
+      "https://github.com/Aitherium",
+      "https://discord.gg/xMv9hHKkkh",
+      "https://blog.aitherium.com"
+    ]
   }
 }

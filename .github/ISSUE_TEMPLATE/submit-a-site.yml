@@ -28,7 +28,7 @@ body:
     id: kind
     attributes:
       label: Kind
-      options: [site, garden, room, space, dataset, org, service]
+      options: [site, business, garden, room, space, dataset, org, service]
     validations:
       required: true
   - type: input
@@ -43,6 +43,45 @@ body:
       label: Keyword
       description: Optional .aither keyword, like an old AOL keyword.
       placeholder: my-site.aither
+  - type: markdown
+    attributes:
+      value: |
+        **Businesses:** the fields below are optional. They become your listing page and are
+        published as schema.org data that search engines and AI agents read. Listing asks you
+        to accept no terms and to release no legal claims. See https://index.aitherium.com/claim/
+  - type: input
+    id: about
+    attributes:
+      label: About
+      description: One or two sentences (up to 500 characters).
+  - type: input
+    id: category
+    attributes:
+      label: Category
+      placeholder: bakery
+  - type: input
+    id: address
+    attributes:
+      label: Address
+      description: Leave empty if you do not want a street address public.
+  - type: input
+    id: area_served
+    attributes:
+      label: Area served
+      placeholder: Springfield, or Worldwide
+  - type: input
+    id: phone
+    attributes:
+      label: Phone
+  - type: input
+    id: email
+    attributes:
+      label: Public email
+  - type: textarea
+    id: hours
+    attributes:
+      label: Hours
+      description: One line each, like "Mo-Fr 09:00-17:00" or "Sa,Su 10:00-14:00".
   - type: textarea
     id: why
     attributes:
