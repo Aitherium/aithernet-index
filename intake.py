@@ -24,7 +24,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import netindex  # noqa: E402
 
-FORM_KINDS = {"site", "garden", "room", "space", "dataset", "org", "service"}
+FORM_KINDS = {"site", "garden", "room", "space", "dataset", "org", "service", "business"}
+# Optional listing fields on the form -> listing keys (validated by NI010).
+FORM_LISTING = {"about": "description", "category": "category", "address": "address",
+                "area served": "area_served", "phone": "phone", "public email": "email"}
 _SAFE = re.compile(r"[^a-z0-9._-]+")
 
 
@@ -63,6 +66,19 @@ def record_from(form: dict, login: str, today: dt.date) -> dict:
             raise ValueError("keyword must look like my-site.aither")
         rec["names"] = [name]
         rec["route"] = {"type": "web", "target": url}
+    listing = {}
+    for label, key in FORM_LISTING.items():
+        val = " ".join(form.get(label, "").split())
+        if val:
+            listing[key] = val
+    hours = [h.strip() for h in form.get("hours", "").replace(";", "\n").splitlines() if h.strip()]
+    if hours:
+        listing["hours"] = hours
+    if listing:
+        bad = netindex.listing_findings(rid, kind, url, listing)
+        if bad:
+            raise ValueError("; ".join(f.message for f in bad))
+        rec["listing"] = listing
     rec["provenance"] = {
         "added_by": f"github:{login}",
         "sources": [url],
@@ -79,7 +95,18 @@ def _self_test() -> int:
     ok = (r["id"] == "example.com_my-garden" and r["kind"] == "garden"
           and r["tags"] == ["a", "b-c"] and "names" not in r
           and r["provenance"]["validated"]["method"] == "submitted")
-    for bad in ({"url": "http://x.com"}, {"url": "https://x.com", "keyword": "evil;rm.aither"},
+    nl = "\n"
+    biz_body = nl.join(["### URL", "", "https://bakery.example", "", "### Title", "", "Bakery",
+                        "", "### Kind", "", "business", "", "### About", "",
+                        "Sourdough  and pastries", "", "### Hours", "", "Mo-Fr 07:00-15:00",
+                        "Sa 08:00-12:00", "", "### Phone", "", "+1 555 010 0000"])
+    biz = record_from(parse_form(biz_body), "bob", day)
+    ok &= (biz["kind"] == "business" and biz["listing"] == {
+        "description": "Sourdough and pastries", "phone": "+1 555 010 0000",
+        "hours": ["Mo-Fr 07:00-15:00", "Sa 08:00-12:00"]})
+    for bad in ({"url": "https://x.com", "kind": "business", "hours": "nine to five"},
+                {"url": "https://x.com", "kind": "business", "phone": "call me"},
+                {"url": "http://x.com"}, {"url": "https://x.com", "keyword": "evil;rm.aither"},
                 {"url": "https://x.com", "kind": "admin"}):
         try:
             record_from(bad, "m", day)

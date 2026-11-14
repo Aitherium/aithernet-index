@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-11-13
+
+- New kind `business` with an optional `listing` block (description, category, address,
+  area served, phone, email, hours, same_as, geo), validated by rule NI010.
+- The submission form takes those fields, so a business owner never writes JSON.
+- The site publishes one page per entry at `/e/<id>/` with schema.org JSON-LD, plus
+  `/claim/` (how to list or claim a business), `/llms.txt`, `/robots.txt` and `/sitemap.xml`.
+
 ## 0.3.0 - 2026-11-08
 
 - Trust reads OSINT evidence (`provenance.evidence`): a sanctions hit or a HIGH/CRITICAL

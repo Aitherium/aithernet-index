@@ -2,7 +2,7 @@
 """Validate the git-tracked AitherNet Index (records/).
 
 Exit 0 clean, 1 violation, 2 could not judge (no records found / unreadable root).
-Rules NI000-NI008 live in ``netindex.py::validate``.
+Rules NI000-NI010 live in ``netindex.py::validate``.
 
     python check.py
     python check.py --resolve docs.aither
@@ -55,6 +55,18 @@ def _self_test() -> int:
                         "vouches": [{"by": "t", "at": "2026-01-02"}]}}], {"NI009"}),
         "future validation": ([{**good, "provenance": {**good["provenance"], "validated":
                                {"at": "2999-01-01", "by": "t", "method": "m"}}}], {"NI008"}),
+        "good business": ([{**good, "kind": "business", "listing": {
+            "description": "Bakery", "category": "bakery", "address": "1 Main St",
+            "area_served": "Springfield", "phone": "+1 (555) 010-0000", "email": "hi@a.example",
+            "hours": ["Mo-Fr 07:00-15:00", "Sa,Su 08:00-12:00"],
+            "same_as": ["https://social.example/a"], "geo": {"lat": 45.5, "lng": -122.6}}}],
+            set()),
+        "business without url": ([{**good, "kind": "business", "url": ""}], {"NI010"}),
+        "bad hours": ([{**good, "listing": {"hours": ["9 to 5"]}}], {"NI010"}),
+        "unknown listing field": ([{**good, "listing": {"ssn": "000"}}], {"NI010"}),
+        "bad geo": ([{**good, "listing": {"geo": {"lat": 200, "lng": 0}}}], {"NI010"}),
+        "http same_as": ([{**good, "listing": {"same_as": ["http://a"]}}], {"NI010"}),
+        "listing not object": ([{**good, "listing": "open 9-5"}], {"NI010"}),
     }
     ok = True
     for label, (raws, want) in cases.items():

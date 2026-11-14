@@ -40,6 +40,18 @@ Open an issue with **Submit a site**. A bot turns it into a pull request, checks
 the URL answers, and a maintainer reviews it. You can also open the PR yourself. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## List or claim a business
+
+A business lists itself with the same form (kind `business`) and claims the entry by
+serving `/.well-known/aithernet.json` from its own domain. No terms to accept, no legal
+claims released. Its facts are published as schema.org data on `/e/<id>/`. How it works:
+https://index.aitherium.com/claim/
+
+## For agents
+
+`/llms.txt`, `/robots.txt` (everyone welcome), `/sitemap.xml`, `/index.json` and one
+JSON-LD page per entry under `/e/<id>/`.
+
 ## Trust
 
 Every entry shows a trust tier computed from evidence:

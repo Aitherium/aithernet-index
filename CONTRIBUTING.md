@@ -41,6 +41,29 @@ Serve this at `https://<your-host>/.well-known/aithernet.json`:
 
 `verify.py` then marks the entry **owner-proven**.
 
+## List or claim a business
+
+Pick the kind `business` on the **Submit a site** form. Its optional fields (about,
+category, address, area served, phone, public email, hours) become a `listing` block:
+
+```json
+"listing": {
+  "description": "Neighbourhood bakery, sourdough and pastries",
+  "category": "bakery",
+  "area_served": "Springfield",
+  "phone": "+1 555 010 0000",
+  "hours": ["Mo-Fr 07:00-15:00", "Sa,Su 08:00-12:00"],
+  "same_as": ["https://social.example/yourbakery"]
+}
+```
+
+Rule NI010 rejects unknown fields, over-long text, malformed hours, phones, emails, geo
+and non-https links. Each entry gets a page at `/e/<id>/` that publishes the listing as
+schema.org JSON-LD (`LocalBusiness`), which search engines and AI agents read. Claiming it
+is the owner proof above. Listing asks you to accept no terms and to release no legal
+claims; the facts in your file are CC BY 4.0, like every record. Plain-language version:
+https://index.aitherium.com/claim/
+
 ## Rules
 
 - No paid placements unless the issue says so.
