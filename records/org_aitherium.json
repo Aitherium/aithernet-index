@@ -13,9 +13,9 @@
       "https://aitherium.com"
     ],
     "validated": {
-      "at": "2026-11-08",
-      "by": "aither",
-      "method": "owner-asserted"
+      "at": "2026-11-13",
+      "by": "aithernet-bot",
+      "method": "well-known"
     },
     "evidence": {
       "by": "shadowbroker",
