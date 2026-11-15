@@ -1,0 +1,37 @@
+{
+  "id": "room_aitherium_random",
+  "kind": "room",
+  "title": "#random",
+  "url": "https://relay.aitherium.com",
+  "tags": [
+    "aitherrelay",
+    "room",
+    "community"
+  ],
+  "names": [
+    "aitherium-random.aither"
+  ],
+  "route": {
+    "type": "relay-room",
+    "target": "https://relay.aitherium.com",
+    "channel": "#random"
+  },
+  "edges": [
+    {
+      "rel": "part_of",
+      "to": "relay_aitherium"
+    }
+  ],
+  "provenance": {
+    "added_by": "agent:aither-worlds-index",
+    "sources": [
+      "aitheros:/osint/worlds"
+    ],
+    "generated_at": "2026-11-15T22:55:35+00:00",
+    "validated": {
+      "at": "2026-11-15",
+      "by": "agent:aither-worlds-index",
+      "method": "listed-public"
+    }
+  }
+}
