@@ -1,0 +1,30 @@
+{
+  "id": "relay_aitherium",
+  "kind": "service",
+  "title": "Aitherium Relay",
+  "url": "https://relay.aitherium.com",
+  "tags": [
+    "aitherrelay",
+    "relay",
+    "community"
+  ],
+  "names": [
+    "aitherium-relay.aither"
+  ],
+  "route": {
+    "type": "aithernet",
+    "target": "https://relay.aitherium.com"
+  },
+  "provenance": {
+    "added_by": "agent:aither-worlds-index",
+    "sources": [
+      "aitheros:/osint/worlds"
+    ],
+    "generated_at": "2026-11-15T22:55:35+00:00",
+    "validated": {
+      "at": "2026-11-15",
+      "by": "agent:aither-worlds-index",
+      "method": "listed-public"
+    }
+  }
+}
