@@ -1,0 +1,30 @@
+{
+  "id": "world_aitherium",
+  "kind": "world",
+  "title": "Aitherium Collective",
+  "url": "https://discord.gg/xMv9hHKkkh",
+  "tags": [
+    "wesyn",
+    "discord",
+    "community"
+  ],
+  "names": [
+    "aitherium.aither"
+  ],
+  "route": {
+    "type": "world",
+    "target": "https://discord.gg/xMv9hHKkkh"
+  },
+  "provenance": {
+    "added_by": "agent:aither-worlds-index",
+    "sources": [
+      "aitheros:/osint/worlds"
+    ],
+    "generated_at": "2026-11-16T08:00:16+00:00",
+    "validated": {
+      "at": "2026-11-16",
+      "by": "agent:aither-worlds-index",
+      "method": "listed-public"
+    }
+  }
+}
