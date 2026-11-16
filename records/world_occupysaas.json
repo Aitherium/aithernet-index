@@ -1,0 +1,22 @@
+{
+  "id": "world_occupysaas",
+  "kind": "world",
+  "title": "Occupy SaaS",
+  "tags": [
+    "wesyn",
+    "discord",
+    "community"
+  ],
+  "provenance": {
+    "added_by": "agent:aither-worlds-index",
+    "sources": [
+      "aitheros:/osint/worlds"
+    ],
+    "generated_at": "2026-11-16T08:00:16+00:00",
+    "validated": {
+      "at": "2026-11-16",
+      "by": "agent:aither-worlds-index",
+      "method": "listed-public"
+    }
+  }
+}
