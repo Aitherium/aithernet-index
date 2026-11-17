@@ -28,8 +28,9 @@
     },
     "evidence": {
       "by": "shadowbroker",
-      "at": "2026-11-16",
-      "domain_age_unknown": "no registration date in RDAP",
+      "at": "2026-11-17",
+      "domain_age_days": 2500,
+      "ct_first_seen": "2020-01-13",
       "sanctions_hits": 0,
       "threat_level": "LOW"
     }
