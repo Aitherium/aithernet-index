@@ -1,0 +1,23 @@
+{
+  "id": "pufferparty.org",
+  "kind": "site",
+  "title": "Puffer Party",
+  "url": "https://pufferparty.org/",
+  "tags": [
+    "browser-games",
+    "party-game",
+    "multiplayer",
+    "word-games"
+  ],
+  "provenance": {
+    "added_by": "agent:codex",
+    "sources": [
+      "https://pufferparty.org/"
+    ],
+    "validated": {
+      "at": "2026-11-18",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
