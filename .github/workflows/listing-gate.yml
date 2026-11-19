@@ -1,0 +1,76 @@
+name: listing-gate
+
+# Every pull request that adds or changes a record is judged BEFORE it can be
+# merged: backlink artifact, live health, keyless reputation/poisoned-domain
+# lookups, and look-alike detection. Keyless sources only plus the default
+# GITHUB_TOKEN -- no new CI secret (owner rule). Anything that needs a secret
+# (URLhaus/ShadowBroker HMAC) runs on the fleet and posts its own commit status
+# `aithernet/reputation`, which branch protection also requires.
+on:
+  pull_request:
+    paths:
+      - "records/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: listing-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  listing-gate:
+    name: listing-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: unit tests (no network)
+        run: python -m unittest discover -s tests -v
+
+      - name: judge changed records
+        id: gate
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          SUMMARY: ${{ runner.temp }}/listing-gate-summary.md
+          VERDICTS: ${{ runner.temp }}/listing-gate.json
+        run: |
+          set +e
+          python tools/listing_gate.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --labels-json "$PR_LABELS" \
+            --summary "$SUMMARY" \
+            --json "$VERDICTS"
+          code=$?
+          if [ -f "$SUMMARY" ]; then cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"; fi
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      - name: update the sticky pull request comment
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUMMARY: ${{ runner.temp }}/listing-gate-summary.md
+        run: |
+          if [ -f "$SUMMARY" ]; then
+            python tools/listing_gate.py \
+              --comment-file "$SUMMARY" \
+              --pr "${{ github.event.pull_request.number }}" \
+              --repo "${{ github.repository }}"
+          else
+            echo "gate produced no summary (it could not judge); leaving any previous comment"
+          fi
