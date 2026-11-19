@@ -1,15 +1,19 @@
 name: listing-gate
 
-# Every pull request that adds or changes a record is judged BEFORE it can be
-# merged: backlink artifact, live health, keyless reputation/poisoned-domain
-# lookups, and look-alike detection. Keyless sources only plus the default
-# GITHUB_TOKEN -- no new CI secret (owner rule). Anything that needs a secret
-# (URLhaus/ShadowBroker HMAC) runs on the fleet and posts its own commit status
-# `aithernet/reputation`, which branch protection also requires.
+# Every pull request is judged BEFORE it can be merged: backlink artifact, live
+# health, keyless reputation/poisoned-domain lookups, and look-alike detection.
+# Keyless sources only plus the default GITHUB_TOKEN -- no new CI secret (owner
+# rule). Anything that needs a secret (URLhaus/ShadowBroker HMAC) runs on the
+# fleet and posts its own commit status `aithernet/reputation`, which branch
+# protection also requires.
+#
+# WHY NO `paths:` FILTER. This check is REQUIRED on main, so it has to report on
+# every pull request. A path-filtered workflow creates no check run at all when
+# the paths do not match, and GitHub then shows the required check as
+# "Expected" forever -- blocking README PRs. The gate itself is cheap and exits
+# 0 when the PR adds or changes no record ("nothing to judge").
 on:
   pull_request:
-    paths:
-      - "records/**"
   workflow_dispatch:
 
 permissions:
