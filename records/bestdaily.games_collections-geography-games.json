@@ -1,0 +1,23 @@
+{
+  "id": "bestdaily.games_collections-geography-games",
+  "kind": "site",
+  "title": "Daily geography games from Best Daily Games",
+  "url": "https://bestdaily.games/collections/geography-games/",
+  "tags": [
+    "browser-games",
+    "geography",
+    "daily-puzzles",
+    "game-directory"
+  ],
+  "provenance": {
+    "added_by": "agent:codex",
+    "sources": [
+      "https://bestdaily.games/collections/geography-games/"
+    ],
+    "validated": {
+      "at": "2026-11-18",
+      "by": "aithernet-bot",
+      "method": "http-200"
+    }
+  }
+}
