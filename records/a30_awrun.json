@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrun",
+  "kind": "app",
+  "title": "awrun -- A priority-aware queue and dispatcher for agentic runs and ad-hoc CI builds. It also judges whether the runner pool is big enough for the queue it is draining, and can ask a host to grow it -- reserving capacity is zero-sum, so a saturated pool needs more of it, not a different share of it.",
+  "url": "https://a30.link/awrun",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awrun/"
+  },
+  "download": {
+    "slug": "awrun",
+    "short": "https://a30.link/awrun",
+    "target": "https://aitherium.github.io/awrun/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:43+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

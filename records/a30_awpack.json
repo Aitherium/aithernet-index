@@ -1,0 +1,31 @@
+{
+  "id": "a30_awpack",
+  "kind": "app",
+  "title": "awpack -- First-party agent packs \u2014 the ones we build, versioned and installable on their own.",
+  "url": "https://a30.link/awpack",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awpack/"
+  },
+  "download": {
+    "slug": "awpack",
+    "short": "https://a30.link/awpack",
+    "target": "https://aitherium.github.io/awpack/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:46+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

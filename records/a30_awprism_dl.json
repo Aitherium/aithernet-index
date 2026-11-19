@@ -1,0 +1,31 @@
+{
+  "id": "a30_awprism_dl",
+  "kind": "artifact",
+  "title": "awprism -- newest release",
+  "url": "https://a30.link/awprism/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awprism/releases/latest"
+  },
+  "download": {
+    "slug": "awprism/dl",
+    "short": "https://a30.link/awprism/dl",
+    "target": "https://github.com/Aitherium/awprism/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:02+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

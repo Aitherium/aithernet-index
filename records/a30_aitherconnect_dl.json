@@ -1,0 +1,31 @@
+{
+  "id": "a30_aitherconnect_dl",
+  "kind": "artifact",
+  "title": "AitherConnect -- newest release",
+  "url": "https://a30.link/aitherconnect/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/AitherConnect/releases/download/v4.2.2/aither-connect-public-v4.2.2.zip"
+  },
+  "download": {
+    "slug": "aitherconnect/dl",
+    "short": "https://a30.link/aitherconnect/dl",
+    "target": "https://github.com/Aitherium/AitherConnect/releases/download/v4.2.2/aither-connect-public-v4.2.2.zip"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:40+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

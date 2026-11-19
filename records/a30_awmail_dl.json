@@ -1,0 +1,31 @@
+{
+  "id": "a30_awmail_dl",
+  "kind": "artifact",
+  "title": "awmail -- newest release",
+  "url": "https://a30.link/awmail/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awmail/releases/latest"
+  },
+  "download": {
+    "slug": "awmail/dl",
+    "short": "https://a30.link/awmail/dl",
+    "target": "https://github.com/Aitherium/awmail/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:26+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

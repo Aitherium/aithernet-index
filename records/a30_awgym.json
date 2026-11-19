@@ -1,0 +1,31 @@
+{
+  "id": "a30_awgym",
+  "kind": "app",
+  "title": "awgym -- An ARC training gym \u2014 a game a world model can watch, and six roles that play through it.",
+  "url": "https://a30.link/awgym",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awgym/"
+  },
+  "download": {
+    "slug": "awgym",
+    "short": "https://a30.link/awgym",
+    "target": "https://aitherium.github.io/awgym/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:00+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrepl",
+  "kind": "app",
+  "title": "awrepl -- A REPL an agent can actually use \u2014 state that survives between turns.",
+  "url": "https://a30.link/awrepl",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awrepl/"
+  },
+  "download": {
+    "slug": "awrepl",
+    "short": "https://a30.link/awrepl",
+    "target": "https://aitherium.github.io/awrepl/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:22+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

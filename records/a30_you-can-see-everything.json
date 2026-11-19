@@ -1,0 +1,31 @@
+{
+  "id": "a30_you-can-see-everything",
+  "kind": "site",
+  "title": "You can see everything (campaign)",
+  "url": "https://a30.link/you-can-see-everything",
+  "tags": [
+    "a30.link",
+    "site"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.org/?utm_source=x&utm_medium=social&utm_campaign=see-everything"
+  },
+  "download": {
+    "slug": "you-can-see-everything",
+    "short": "https://a30.link/you-can-see-everything",
+    "target": "https://aitherium.org/?utm_source=x&utm_medium=social&utm_campaign=see-everything"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:21+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

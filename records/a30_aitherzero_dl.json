@@ -1,0 +1,31 @@
+{
+  "id": "a30_aitherzero_dl",
+  "kind": "artifact",
+  "title": "AitherZero -- newest release",
+  "url": "https://a30.link/aitherzero/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/AitherZero/releases/download/v2.3.5/AitherZero-2.3.5.zip"
+  },
+  "download": {
+    "slug": "aitherzero/dl",
+    "short": "https://a30.link/aitherzero/dl",
+    "target": "https://github.com/Aitherium/AitherZero/releases/download/v2.3.5/AitherZero-2.3.5.zip"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:50+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

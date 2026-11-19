@@ -1,0 +1,31 @@
+{
+  "id": "a30_awknowledge",
+  "kind": "app",
+  "title": "awknowledge -- How to run a coding agent so the result survives \u2014 the laws, with evidence.",
+  "url": "https://a30.link/awknowledge",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awknowledge/"
+  },
+  "download": {
+    "slug": "awknowledge",
+    "short": "https://a30.link/awknowledge",
+    "target": "https://aitherium.github.io/awknowledge/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:16+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awdecide_dl",
+  "kind": "artifact",
+  "title": "awdecide -- newest release",
+  "url": "https://a30.link/awdecide/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awdecide/releases/download/film-v1/system-one.mp4"
+  },
+  "download": {
+    "slug": "awdecide/dl",
+    "short": "https://a30.link/awdecide/dl",
+    "target": "https://github.com/Aitherium/awdecide/releases/download/film-v1/system-one.mp4"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:14+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

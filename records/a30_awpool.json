@@ -1,0 +1,31 @@
+{
+  "id": "a30_awpool",
+  "kind": "app",
+  "title": "awpool -- The free half of the elastic work pool: dispatches public-safe work onto the free GitHub-hosted runners of the public aw* mirrors, so their idle CI minutes become compute. awrun remains the paid/self-hosted lane; this is its free twin.",
+  "url": "https://a30.link/awpool",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awpool/"
+  },
+  "download": {
+    "slug": "awpool",
+    "short": "https://a30.link/awpool",
+    "target": "https://aitherium.github.io/awpool/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:53+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

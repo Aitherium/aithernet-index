@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrun_dl",
+  "kind": "artifact",
+  "title": "awrun -- newest release",
+  "url": "https://a30.link/awrun/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awrun/releases/latest"
+  },
+  "download": {
+    "slug": "awrun/dl",
+    "short": "https://a30.link/awrun/dl",
+    "target": "https://github.com/Aitherium/awrun/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:45+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

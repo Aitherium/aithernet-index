@@ -1,0 +1,31 @@
+{
+  "id": "a30_awskills_dl",
+  "kind": "artifact",
+  "title": "awskills -- newest release",
+  "url": "https://a30.link/awskills/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awskills/releases/latest"
+  },
+  "download": {
+    "slug": "awskills/dl",
+    "short": "https://a30.link/awskills/dl",
+    "target": "https://github.com/Aitherium/awskills/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:09+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

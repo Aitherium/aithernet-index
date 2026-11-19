@@ -1,0 +1,31 @@
+{
+  "id": "a30_awsettings",
+  "kind": "app",
+  "title": "awsettings -- Your agent's permissions and config, following you to the next machine.",
+  "url": "https://a30.link/awsettings",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awsettings/"
+  },
+  "download": {
+    "slug": "awsettings",
+    "short": "https://a30.link/awsettings",
+    "target": "https://aitherium.github.io/awsettings/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:55+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

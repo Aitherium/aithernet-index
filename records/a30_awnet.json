@@ -1,0 +1,31 @@
+{
+  "id": "a30_awnet",
+  "kind": "app",
+  "title": "awnet -- The agentic web \u2014 agents host a mesh, and agents join one.",
+  "url": "https://a30.link/awnet",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awnet/"
+  },
+  "download": {
+    "slug": "awnet",
+    "short": "https://a30.link/awnet",
+    "target": "https://aitherium.github.io/awnet/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:35+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

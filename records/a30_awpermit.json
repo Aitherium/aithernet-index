@@ -1,0 +1,31 @@
+{
+  "id": "a30_awpermit",
+  "kind": "app",
+  "title": "awpermit -- Let an agent through your door with a scope, a spend cap, and someone accountable.",
+  "url": "https://a30.link/awpermit",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awpermit/"
+  },
+  "download": {
+    "slug": "awpermit",
+    "short": "https://a30.link/awpermit",
+    "target": "https://aitherium.github.io/awpermit/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:49+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

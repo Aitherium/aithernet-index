@@ -1,0 +1,31 @@
+{
+  "id": "a30_awscreen",
+  "kind": "app",
+  "title": "awscreen -- See this machine \u2014 what is on screen, and where to click it.",
+  "url": "https://a30.link/awscreen",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awscreen/"
+  },
+  "download": {
+    "slug": "awscreen",
+    "short": "https://a30.link/awscreen",
+    "target": "https://aitherium.github.io/awscreen/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:47+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

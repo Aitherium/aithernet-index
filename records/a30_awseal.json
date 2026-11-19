@@ -1,0 +1,31 @@
+{
+  "id": "a30_awseal",
+  "kind": "app",
+  "title": "awseal -- Sign an artifact so a stranger can verify it.",
+  "url": "https://a30.link/awseal",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awseal/"
+  },
+  "download": {
+    "slug": "awseal",
+    "short": "https://a30.link/awseal",
+    "target": "https://aitherium.github.io/awseal/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:50+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

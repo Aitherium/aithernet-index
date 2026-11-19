@@ -1,0 +1,31 @@
+{
+  "id": "a30_awevolve",
+  "kind": "app",
+  "title": "awevolve -- Point an agent at a file and a command that scores it, and let it improve.",
+  "url": "https://a30.link/awevolve",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awevolve/"
+  },
+  "download": {
+    "slug": "awevolve",
+    "short": "https://a30.link/awevolve",
+    "target": "https://aitherium.github.io/awevolve/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:32+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

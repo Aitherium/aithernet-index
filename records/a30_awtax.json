@@ -1,0 +1,31 @@
+{
+  "id": "a30_awtax",
+  "kind": "app",
+  "title": "awtax -- Turn any tax PDF -- returns, W-2, 1099, statements, even scans -- into structured data you can check.",
+  "url": "https://a30.link/awtax",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awtax/"
+  },
+  "download": {
+    "slug": "awtax",
+    "short": "https://a30.link/awtax",
+    "target": "https://aitherium.github.io/awtax/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:17+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awnest",
+  "kind": "app",
+  "title": "awnest -- Prove there is a human before you let them into the nest.",
+  "url": "https://a30.link/awnest",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awnest/"
+  },
+  "download": {
+    "slug": "awnest",
+    "short": "https://a30.link/awnest",
+    "target": "https://aitherium.github.io/awnest/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:33+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

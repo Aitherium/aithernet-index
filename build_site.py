@@ -73,6 +73,7 @@ def _record_dict(r: netindex.Record, health: "dict | None" = None) -> dict:
             "artifact": e.get("artifact"),
             "status_reasons": [f.get("code") for f in e.get("failures") or []],
             "listing": r.listing,
+            "download": r.download,
             "page": f"{BASE}/e/{_slug(r)}/"}
 
 
@@ -182,6 +183,16 @@ def _entry_page(r: netindex.Record, sha: str, health: "dict | None" = None) -> s
                             for u in listing["same_as"])
         facts.append(f"<dt>Also at</dt><dd>{links}</dd>")
     site = f'<a href="{e(r.url, quote=True)}">{e(r.url)}</a>' if r.url else "none"
+    dl = r.download or {}
+    if dl.get("short"):
+        facts.append(f'<dt>Short link</dt><dd><a href="{e(dl["short"], quote=True)}">'
+                     f'{e(dl["short"])}</a></dd>')
+    if dl.get("target"):
+        facts.append(f'<dt>Goes to</dt><dd><a href="{e(dl["target"], quote=True)}" '
+                     f'rel="nofollow">{e(dl["target"])}</a></dd>')
+    if dl.get("sha256"):
+        facts.append(f"<dt>SHA-256</dt><dd><code>{e(dl['sha256'])}</code>"
+                     + (f" ({e(dl['asset'])})" if dl.get("asset") else "") + "</dd>")
     src = f"{REPO}/blob/main/records/{_slug(r)}.json"
     desc = str(listing.get("description") or r.title)
     robots = ("<meta name='robots' content='noindex'>"

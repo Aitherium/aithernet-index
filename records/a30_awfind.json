@@ -1,0 +1,31 @@
+{
+  "id": "a30_awfind",
+  "kind": "app",
+  "title": "awfind -- A portable search client \u2014 query, results, ranking.",
+  "url": "https://a30.link/awfind",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awfind/"
+  },
+  "download": {
+    "slug": "awfind",
+    "short": "https://a30.link/awfind",
+    "target": "https://aitherium.github.io/awfind/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:34+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awflow",
+  "kind": "app",
+  "title": "awflow -- A deterministic workflow runtime \u2014 chain agent calls with journal replay and budget control.",
+  "url": "https://a30.link/awflow",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awflow/"
+  },
+  "download": {
+    "slug": "awflow",
+    "short": "https://a30.link/awflow",
+    "target": "https://aitherium.github.io/awflow/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:39+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}
