@@ -52,6 +52,7 @@ def _record_dict(r: netindex.Record) -> dict:
     return {"id": r.id, "kind": r.kind, "title": r.title, "url": r.url, "tags": r.tags,
             "names": r.names, "route": r.route, "edges": r.edges,
             "validated": r.provenance.get("validated", {}),
+            "stale": r.provenance.get("stale", {}),
             "trust": netindex.TIERS[netindex.trust(r)],
             # Where it lives, for explorers (BeadSpace, agents): the URL's host, and the
             # OSINT evidence (domain age, CT, sanctions, threat) that trust was judged on.
@@ -253,6 +254,7 @@ data works.</li>
 
 def _llms(records: list, sha: str) -> str:
     biz = [r for r in records if r.kind in ("business", "org")]
+    discord = [r for r in records if r.kind == netindex.DISCORD_KIND]
     lines = [
         "# AitherNet Index",
         "",
@@ -287,6 +289,11 @@ def _llms(records: list, sha: str) -> str:
         "No terms to accept and no release of legal claims.",
         f"- [Contribution guide]({REPO}/blob/main/CONTRIBUTING.md)",
     ]
+    if discord:
+        lines += ["", "## Discord communities (owner-proven by the Aither bot)"]
+        for r in sorted(discord, key=lambda x: x.title.lower()):
+            lines.append(f"- [{r.title}]({BASE}/e/{_slug(r)}/): {r.url} "
+                         f"({netindex.TIERS[netindex.trust(r)]})")
     if biz:
         lines += ["", "## Businesses and organisations"]
         for r in sorted(biz, key=lambda x: x.title.lower()):
