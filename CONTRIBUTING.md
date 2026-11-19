@@ -113,6 +113,30 @@ invite is re-checked by the bot instead. **Failure means:** the page does not
 point back at its entry. Add one of the snippets above (the `.well-known` file is
 the one that also raises trust to *owner-proven*).
 
+**Provenance (Discord and other bot-verified records).** That exemption holds
+only because the bot did the checking, so the gate proves the bot's own PR
+carried the record. A record of kind `discord`/`community`, or any record
+carrying a `discord-bot` stamp, may be added or changed only when all three hold:
+
+1. the PR's GitHub author is the intake workflow (`github-actions[bot]`, listed
+   in `intake_pr_authors`);
+2. **every** commit that touches the record is authored **and** committed by the
+   bot account (`bot_commit_logins` in `tools/gate_config.json`), with those
+   identities read from the GitHub API -- being the PR author is not enough,
+   because a collaborator can push onto an intake branch without changing it;
+3. the PR changes exactly one record, at `records/<id>.json`.
+
+The stamp itself is text anyone can type. A hand-written PR that adds such a
+record, edits its stamp, re-kinds it, pushes a commit onto an intake branch, or
+bundles it with other records fails `provenance`. To list a Discord server, add
+the Aither bot to it and ask it; to change one, ask the bot again.
+
+CI runs on `pull_request_target` and uses the workflow, the gate and
+`gate_config.json` from the PR's **base** commit, reading the PR's records as
+data (`git fetch` + `git show`, never checked out or executed). A PR therefore
+cannot edit the rule that judges it or the author it is judged by. The check is
+only enforced when `listing-gate` is required in branch protection.
+
 ### 2. Health
 
 The record's https URL must answer 2xx within 15 seconds, with a valid TLS
