@@ -35,8 +35,11 @@ DEFAULT_ROOT = Path(os.environ.get("AWINDEX_ROOT")
 # business = a place or company that wants to be found (hours, area, contact): its
 # facts live in ``listing`` and are published as schema.org data search engines and
 # AI agents read. Claiming one is the same owner proof as any record (well-known).
+# discord = a Discord community: a server the Aither bot is IN, whose manager asked
+# for it and holds Manage Server there. Its facts are a permanent invite (``url``),
+# the server id and an optional member-count band in ``listing``. Never member lists.
 KINDS = {"site", "service", "org", "gate", "world", "dataset",
-         "garden", "room", "space", "business"}
+         "garden", "room", "space", "business", "discord"}
 ROUTE_TYPES = {"web", "aithernet", "relay-gate", "world", "relay-room", "space"}
 EDGE_RELS = {"owned_by", "links_to", "mirrors", "part_of", "bridges", "about", "alternative_to"}
 NAME_SUFFIX = ".aither"
@@ -52,6 +55,31 @@ HOURS_RE = re.compile(f"^{_DAY}([-,]{_DAY})* {_HHMM}-{_HHMM}$")
 PHONE_RE = re.compile("^[+]?[0-9][0-9 ()./-]{4,38}$")
 EMAIL_RE = re.compile("^[^@ <>\"']+@[^@ <>\"']+[.][A-Za-z]{2,}$")
 _CTRL = re.compile("[" + chr(0) + "-" + chr(31) + chr(127) + "]")
+
+# A Discord community (NI011). The invite is the public fact; the guild id is the
+# stable identity (an invite can be revoked and remade, a server id cannot). Member
+# COUNT is an optional coarse band; member LISTS are never part of a record.
+DISCORD_KIND = "discord"
+DISCORD_INVITE_RE = re.compile(
+    r"^https://(?:discord[.]gg|discord[.]com/invite)/[A-Za-z0-9-]{2,64}$")
+SNOWFLAKE_RE = re.compile(r"^[0-9]{17,20}$")
+DISCORD_REQUESTER_RE = re.compile(r"^discord:[0-9]{17,20}$")
+#: The only member-count bands a listing may publish (never an exact roster).
+DISCORD_BANDS = ("1-99", "100-499", "500-999", "1k-4.9k", "5k-9.9k", "10k-49k", "50k+")
+DISCORD_LISTING_KEYS = {"guild", "member_band"}
+#: A ``discord-bot`` provenance stamp carries EXACTLY these keys (NI012).
+DISCORD_STAMP_KEYS = {"at", "by", "method", "guild", "requested_by"}
+#: GitHub logins that may put a ``discord-bot`` stamp on a record. The Aither bot is
+#: the account that is IN the server and saw the requester hold Manage Server; the
+#: Connect intake's drain files the "Submit a site" issue under one of these logins.
+#: GitHub sets ``issue.user.login`` itself, so only that account's token can author
+#: such an issue: the automated door is authenticated by the account, not by text in
+#: the form. NI012 also requires ``provenance.added_by`` to name one of these, so a
+#: stranger's pull request claiming the stamp contradicts its own author in review.
+#: Today this is the account the host's ``gh`` files as; a dedicated bot account is the
+#: better long-term holder and would replace it here and in the drain tool together.
+DISCORD_BOT_SUBMITTERS = ("aither-wzns",)
+DISCORD_BOT_ADDED_BY = frozenset(f"github:{login}" for login in DISCORD_BOT_SUBMITTERS)
 
 
 @dataclass
@@ -170,6 +198,12 @@ def validate(records: Iterable[Record], today: Optional[_dt.date] = None) -> "li
             else:
                 if when > today:
                     out.append(Finding("NI008", rid, f"validated.at {when} is in the future"))
+        if val.get("method") == "owner-asserted" and (
+                prov.get("added_by") not in OWNER_ASSERTERS
+                or val.get("by") not in OWNER_ASSERTERS):
+            out.append(Finding("NI008", rid, "owner-asserted is the index operator's own "
+                               "claim, never a contributor's: this record needs real "
+                               "evidence"))
         seen = set()
         for v in prov.get("vouches") or []:
             who = (v or {}).get("by")
@@ -181,6 +215,8 @@ def validate(records: Iterable[Record], today: Optional[_dt.date] = None) -> "li
                 out.append(Finding("NI009", rid, f"{who} vouched twice"))
             seen.add(who)
         out += listing_findings(rid, r.kind, r.url, r.listing)
+        out += discord_findings(rid, r.kind, r.url, r.listing)
+        out += discord_stamp_findings(rid, r.kind, r.listing, prov)
     return out
 
 
@@ -193,7 +229,16 @@ def listing_findings(rid: str, kind: str, url: str, listing: dict) -> "list[Find
         return out
     if listing.get("_invalid"):
         return out + [Finding("NI010", rid, "listing must be an object")]
-    for k in sorted(set(listing) - LISTING_KEYS):
+    # A Discord community publishes the guild id and an optional band, and NOTHING
+    # else: no description, address, phone or email can reach a public record of a
+    # server whose manager only chose to list the server.
+    if kind == DISCORD_KIND:
+        for k in sorted(set(listing) - DISCORD_LISTING_KEYS):
+            out.append(Finding("NI010", rid, f"a Discord listing carries only "
+                               f"{sorted(DISCORD_LISTING_KEYS)}; not {k!r}"))
+        return out
+    allowed = LISTING_KEYS
+    for k in sorted(set(listing) - allowed):
         out.append(Finding("NI010", rid, f"unknown listing field {k!r}"))
     for k, cap in LISTING_TEXT.items():
         v = listing.get(k)
@@ -231,19 +276,113 @@ def listing_findings(rid: str, kind: str, url: str, listing: dict) -> "list[Find
     return out
 
 
+def discord_findings(rid: str, kind: str, url: str, listing: dict) -> "list[Finding]":
+    """NI011: a Discord community carries a permanent invite and its server id.
+
+    The invite is the only address a Discord server has; the guild id is the stable
+    identity. Nothing here stores a member, a message, an email or a role.
+    """
+    if kind != DISCORD_KIND:
+        return []
+    out: list = []
+    if not DISCORD_INVITE_RE.match(str(url or "")):
+        out.append(Finding("NI011", rid, "url must be a permanent invite, "
+                           "https://discord.gg/<code> (or https://discord.com/invite/<code>)"))
+    guild = listing.get("guild") if isinstance(listing, dict) else None
+    if not isinstance(guild, str) or not SNOWFLAKE_RE.match(guild):
+        out.append(Finding("NI011", rid, "listing.guild must be the Discord server id "
+                           "(17-20 digits)"))
+    band = listing.get("member_band") if isinstance(listing, dict) else None
+    if band is not None and band not in DISCORD_BANDS:
+        out.append(Finding("NI011", rid, f"listing.member_band must be one of "
+                           f"{list(DISCORD_BANDS)}"))
+    return out
+
+
+def discord_stamp_findings(rid: str, kind: str, listing: dict, prov: dict) -> "list[Finding]":
+    """NI012: the ``discord-bot`` stamp is the ONLY proof a Discord entry may carry.
+
+    The Aither bot is IN the server and observed Manage Server there when the manager
+    asked, so this stamp stands where a site's ``/.well-known`` proof would stand. It
+    is only as good as its record: the guild, the manager and nothing else. A Discord
+    entry with any other method has no proof at all, and a stamp is only accepted from
+    an account that runs the bot (``DISCORD_BOT_SUBMITTERS``), never from form text.
+    """
+    out: list = []
+    vals = prov.get("validated") or {}
+    stale = prov.get("stale")
+    if stale is not None:
+        ok = (isinstance(stale, dict) and isinstance(stale.get("at"), str)
+              and bool(stale.get("reason")))
+        if not ok:
+            out.append(Finding("NI012", rid, "provenance.stale needs at and reason"))
+        elif kind != DISCORD_KIND:
+            out.append(Finding("NI012", rid, "provenance.stale is only for a Discord entry"))
+    if kind != DISCORD_KIND:
+        if vals.get("method") == "discord-bot":
+            out.append(Finding("NI012", rid, "a discord-bot stamp belongs only on kind discord"))
+        return out
+    if vals.get("method") != "discord-bot":
+        # owner-asserted, submitted, http-200: none of them observed Manage Server.
+        out.append(Finding("NI012", rid, "a Discord entry's only proof is the discord-bot "
+                           "stamp; another method proves nothing"))
+        return out
+    added = prov.get("added_by")
+    if added not in DISCORD_BOT_ADDED_BY:
+        out.append(Finding("NI012", rid, f"a discord-bot stamp is filed by "
+                           f"{sorted(DISCORD_BOT_ADDED_BY)}, not by {added!r}"))
+    missing = sorted(k for k in ("guild", "requested_by") if not vals.get(k))
+    if missing:
+        out.append(Finding("NI012", rid, f"a discord-bot stamp needs {missing}"))
+    extra = sorted(set(vals) - DISCORD_STAMP_KEYS)
+    if extra:
+        out.append(Finding("NI012", rid, f"a discord-bot stamp carries only "
+                           f"{sorted(DISCORD_STAMP_KEYS)}; extra {extra}"))
+    if vals.get("by") != "aithernet-bot":
+        out.append(Finding("NI012", rid, "a discord-bot stamp is by aithernet-bot"))
+    guild = str(vals.get("guild") or "")
+    if guild and not SNOWFLAKE_RE.match(guild):
+        out.append(Finding("NI012", rid, "stamp guild must be a Discord server id"))
+    elif guild and isinstance(listing, dict) and listing.get("guild") != guild:
+        out.append(Finding("NI012", rid, "stamp guild does not match listing.guild"))
+    who = str(vals.get("requested_by") or "")
+    if who and not DISCORD_REQUESTER_RE.match(who):
+        out.append(Finding("NI012", rid, "requested_by must look like discord:<user id>"))
+    return out
+
+
 # Trust is COMPUTED from evidence in the record, never typed in by a contributor.
 # A submitter can claim anything; only these facts move an entry up a tier.
 TIERS = {0: "submitted", 1: "reachable", 2: "owner-proven", 3: "vouched"}
 _REACH_METHODS = {"http-200"}
-_OWNER_METHODS = {"well-known", "owner-asserted"}
+# discord-bot ranks WITH owner-proven: the Aither bot is inside the server and saw
+# the requester hold Manage Server there, which a stranger cannot arrange.
+_OWNER_METHODS = {"well-known", "discord-bot"}
+# "owner-asserted" is the OPERATOR's own claim over properties the operator runs
+# (the index itself, Tagalong Town, the ShadowBroker gates). It is not evidence a
+# contributor can offer: unless the record names the operator as both submitter and
+# asserter it proves nothing, and a Discord entry may not use it at all (NI012).
+OWNER_ASSERTERS = frozenset({"aither"})
 
 
 def trust(r: Record) -> int:
     """0 submitted · 1 reachable (bot fetched it) · 2 owner-proven (the site serves
-    /.well-known/aithernet.json naming this id) · 3 vouched (reachable or better AND
-    at least two distinct people other than the submitter vouched)."""
+    /.well-known/aithernet.json naming this id, or a Discord entry carries the
+    discord-bot stamp) · 3 vouched (reachable or better AND at least two distinct
+    people other than the submitter vouched)."""
+    if r.provenance.get("stale"):
+        return 0            # the invite no longer resolves: nothing is reachable
     method = (r.provenance.get("validated") or {}).get("method", "")
-    tier = 2 if method in _OWNER_METHODS else 1 if method in _REACH_METHODS else 0
+    if method == "discord-bot" and (r.kind != DISCORD_KIND
+                                    or r.provenance.get("added_by") not in DISCORD_BOT_ADDED_BY):
+        # A stamp outside the bot's door is not evidence, whatever a file claims.
+        return 0
+    if method == "owner-asserted" and not (
+            r.provenance.get("added_by") in OWNER_ASSERTERS
+            and (r.provenance.get("validated") or {}).get("by") in OWNER_ASSERTERS):
+        return 0            # a stranger's bare assertion is tier 0, never owner-proven
+    tier = 2 if method in _OWNER_METHODS or method == "owner-asserted" else (
+        1 if method in _REACH_METHODS else 0)
     vouchers = {v.get("by") for v in r.provenance.get("vouches") or [] if v.get("by")}
     vouchers.discard(r.provenance.get("added_by"))
     if tier >= 1 and len(vouchers) >= 2:

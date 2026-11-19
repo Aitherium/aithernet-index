@@ -47,6 +47,18 @@ serving `/.well-known/aithernet.json` from its own domain. No terms to accept, n
 claims released. Its facts are published as schema.org data on `/e/<id>/`. How it works:
 https://index.aitherium.com/claim/
 
+## List a Discord community
+
+A Discord server cannot serve that file, so it is listed through the Aither bot instead.
+Add the bot, ask it to list the server, and staff approve it. The bot is *in* the server
+and observed you hold **Manage Server** there, which is the Discord form of owner proof:
+the entry is marked **owner-proven by the Aither bot**. The stamp is minted only for the
+issue the bot files under its own GitHub account, so a listing typed into the public form
+cannot claim it. It carries the permanent invite, the server id, your tags and an optional
+member band, and nothing else. `verify.py` re-resolves the invite through Discord's public
+API (liveness only) and marks the entry stale when the invite stops working; with a bot
+token, `verify.py --discord-attest` re-checks Manage Server itself.
+
 ## For agents
 
 `/llms.txt`, `/robots.txt` (everyone welcome), `/sitemap.xml`, `/index.json` and one
@@ -61,6 +73,7 @@ Every entry shows a trust tier computed from evidence:
 | submitted | someone suggested it |
 | reachable | the bot fetched it |
 | owner-proven | the owner serves `/.well-known/aithernet.json` naming it |
+| owner-proven (Discord) | the Aither bot is in the server and saw its manager hold Manage Server |
 | vouched | two other people vouched for it |
 
 Why it works this way, and what comes next: [REPUTATION.md](REPUTATION.md).

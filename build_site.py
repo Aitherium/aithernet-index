@@ -48,16 +48,48 @@ def _sha(root: Path) -> str:
         return "unknown"
 
 
+_PUBLIC_PROV = ("at", "by", "method")
+
+
+def _public_provenance(prov: dict) -> dict:
+    """What a record federates about its proof: how and when, never who asked.
+
+    A Discord stamp also carries ``requested_by`` (the manager's Discord user id) in
+    the record file, where it is the proof. That id is personal, so it is NOT copied
+    into index.json, an entry page or llms.txt. Liveness (``checked``) is separate
+    from the attestation (``validated``) and is published as a date only.
+    """
+    val = prov.get("validated") or {}
+    out = {k: val[k] for k in _PUBLIC_PROV if k in val}
+    checked = prov.get("checked")
+    if isinstance(checked, dict) and checked.get("at"):
+        out["checked"] = {"at": checked["at"], "status": checked.get("status")}
+    stale = prov.get("stale")
+    if isinstance(stale, dict):
+        out["stale"] = {"at": stale.get("at", ""), "reason": stale.get("reason", "")}
+    return out
+
+
+def _public_listing(r: netindex.Record) -> dict:
+    """A Discord listing federates its guild id and band only; nothing else can exist."""
+    if r.kind == netindex.DISCORD_KIND:
+        return {k: v for k, v in (r.listing or {}).items()
+                if k in netindex.DISCORD_LISTING_KEYS}
+    return r.listing
+
+
 def _record_dict(r: netindex.Record) -> dict:
+    prov = _public_provenance(r.provenance)
     return {"id": r.id, "kind": r.kind, "title": r.title, "url": r.url, "tags": r.tags,
             "names": r.names, "route": r.route, "edges": r.edges,
-            "validated": r.provenance.get("validated", {}),
+            "validated": prov,
+            "stale": prov.get("stale", {}),
             "trust": netindex.TIERS[netindex.trust(r)],
             # Where it lives, for explorers (BeadSpace, agents): the URL's host, and the
             # OSINT evidence (domain age, CT, sanctions, threat) that trust was judged on.
             "host": (urlsplit(r.url).hostname or "") if r.url else "",
             "evidence": r.provenance.get("evidence", {}),
-            "listing": r.listing,
+            "listing": _public_listing(r),
             "page": f"{BASE}/e/{_slug(r)}/"}
 
 
@@ -67,7 +99,21 @@ def _slug(r: netindex.Record) -> str:
 
 
 _SCHEMA_TYPE = {"business": "LocalBusiness", "org": "Organization", "dataset": "Dataset",
-                "service": "WebApplication"}
+                "service": "WebApplication", "discord": "Organization"}
+
+#: The badge a Discord community earned from the Aither bot being IN the server.
+DISCORD_BADGE = "owner-proven by the Aither bot"
+
+
+def _badge(r: netindex.Record) -> str:
+    """The trust badge an entry shows on the directory and its own page."""
+    val = r.provenance.get("validated") or {}
+    if (r.kind == netindex.DISCORD_KIND and val.get("method") == "discord-bot"
+            and not r.provenance.get("stale")):
+        return f'<span class="badge">{html.escape(DISCORD_BADGE)}</span>'
+    if r.provenance.get("stale"):
+        return '<span class="badge stale">stale &middot; invite gone</span>'
+    return ""
 
 
 def jsonld(r: netindex.Record) -> dict:
@@ -113,6 +159,9 @@ h1{margin:0 0 6px} h2{margin:28px 0 8px;font-size:18px}
 pre{background:rgba(127,127,127,.12);padding:10px;overflow-x:auto}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px} dt{color:var(--mute)}
 dd{margin:0;overflow-wrap:anywhere} nav a{margin-right:14px;display:inline-block}
+.badge{border:1px solid var(--acc);border-radius:9px;color:var(--acc);font-size:12px;
+padding:1px 7px;margin-left:6px;white-space:nowrap}
+.badge.stale{border-color:var(--mute);color:var(--mute)}
 </style>"""
 
 _NAV = ('<nav><a href="/">Index</a><a href="/claim/">List or claim your business</a>'
@@ -126,8 +175,10 @@ def _entry_page(r: netindex.Record, sha: str) -> str:
     tier = netindex.TIERS[netindex.trust(r)]
     listing = r.listing or {}
     facts = []
-    labels = [("description", "About"), ("category", "Category"), ("address", "Address"),
-              ("area_served", "Area served"), ("phone", "Phone"), ("email", "Email")]
+    # A Discord listing carries no personal facts at all (NI010), so none are rendered.
+    labels = [] if r.kind == netindex.DISCORD_KIND else [
+        ("description", "About"), ("category", "Category"), ("address", "Address"),
+        ("area_served", "Area served"), ("phone", "Phone"), ("email", "Email")]
     for key, label in labels:
         if isinstance(listing.get(key), str):
             facts.append(f"<dt>{label}</dt><dd>{e(listing[key])}</dd>")
@@ -137,9 +188,26 @@ def _entry_page(r: netindex.Record, sha: str) -> str:
         links = "<br>".join(f'<a href="{e(u, quote=True)}" rel="nofollow">{e(u)}</a>'
                             for u in listing["same_as"])
         facts.append(f"<dt>Also at</dt><dd>{links}</dd>")
+    if r.kind == netindex.DISCORD_KIND:
+        facts.append(f"<dt>Discord server</dt><dd><code>{e(str(listing.get('guild', '')))}"
+                     "</code></dd>")
+        if listing.get("member_band"):
+            facts.append(f"<dt>Members</dt><dd>{e(str(listing['member_band']))}</dd>")
+        seen = (r.provenance.get("checked") or {}).get("at")
+        if seen:
+            facts.append(f"<dt>Invite last resolved</dt><dd>{e(str(seen))}</dd>")
     site = f'<a href="{e(r.url, quote=True)}">{e(r.url)}</a>' if r.url else "none"
     src = f"{REPO}/blob/main/records/{_slug(r)}.json"
     desc = str(listing.get("description") or r.title)
+    if r.kind == netindex.DISCORD_KIND:
+        # The attestation date is the bot's observation; liveness is shown separately.
+        checked = (f"attested {e(str(v.get('at', '')))} by the Aither bot")
+    else:
+        checked = (f"checked {e(str(v.get('at', '')))} by {e(str(v.get('by', '')))} "
+                   f"({e(str(v.get('method', '')))})")
+    if r.provenance.get("stale"):
+        checked = "stale: " + e(str((r.provenance.get("stale") or {}).get("reason", "")))
+    invite = "Invite" if r.kind == netindex.DISCORD_KIND else "Website"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(r.title)} | AitherNet Index</title>
@@ -147,10 +215,9 @@ def _entry_page(r: netindex.Record, sha: str) -> str:
 <meta name="description" content="{e(desc, quote=True)}">
 {_ld_script(jsonld(r))}
 {_STYLE}</head><body>{_NAV}
-<h1>{e(r.title)}</h1>
-<p class="mute">{e(r.kind)} &middot; trust: <b>{e(tier)}</b> &middot; checked {e(str(v.get('at', '')))}
-by {e(str(v.get('by', '')))} ({e(str(v.get('method', '')))})</p>
-<dl><dt>Website</dt><dd>{site}</dd>{''.join(facts)}</dl>
+<h1>{e(r.title)}{_badge(r)}</h1>
+<p class="mute">{e(r.kind)} &middot; trust: <b>{e(tier)}</b> &middot; {checked}</p>
+<dl><dt>{invite}</dt><dd>{site}</dd>{''.join(facts)}</dl>
 <h2>Where this comes from</h2>
 <p>This listing is one file in a public git repository:
 <a href="{e(src, quote=True)}">records/{e(_slug(r))}.json</a>. Every change to it is a
@@ -197,6 +264,16 @@ listing <b>owner-proven</b>. That is the whole claim process. There is nothing t
 <p>Hours use the schema.org form shown. The index validator (rule NI010) rejects any
 field it does not know, so a listing can only ever hold the facts you chose to publish.</p>
 
+<h2>Discord communities</h2>
+<p>A Discord server cannot serve a file on a host it does not own. Instead, add the
+Aither bot and ask it to list your server. The bot is <i>in</i> your server and can see
+that you hold <b>Manage Server</b> there, so its own observation becomes the same proof
+as the file above: your entry is marked <b>owner-proven by the Aither bot</b>. The bot
+files the listing itself; a listing typed into the public form cannot claim it. Your
+listing carries the invite, your server id, the tags you chose and, if you want, a
+coarse member band. It never carries a member list, a description or any contact
+details. If the invite stops working the entry is marked stale.</p>
+
 <h2>What you give, and what you keep</h2>
 <ul>
 <li>No account here and no terms to click. You need a GitHub account to open the issue
@@ -218,6 +295,7 @@ data works.</li>
 
 def _llms(records: list, sha: str) -> str:
     biz = [r for r in records if r.kind in ("business", "org")]
+    discord = [r for r in records if r.kind == netindex.DISCORD_KIND]
     lines = [
         "# AitherNet Index",
         "",
@@ -239,13 +317,24 @@ def _llms(records: list, sha: str) -> str:
         "- submitted: someone proposed it.",
         "- reachable: a bot fetched the URL and got HTTP 200.",
         "- owner-proven: the site serves /.well-known/aithernet.json naming the record id.",
+        "- owner-proven (Discord): the Aither bot is in the server and saw its manager "
+        "hold Manage Server when they asked to be listed; the invite still resolves.",
         "- vouched: reachable or better, and two people other than the submitter vouched.",
+        "",
+        "## Discord communities",
+        "A Discord community is listed by its manager through the Aither bot; its entry "
+        "shows the invite, the server id and a coarse member band. No member lists.",
         "",
         "## List or claim a business",
         f"- [How it works]({BASE}/claim/): submit, prove control of your own domain, add your facts. "
         "No terms to accept and no release of legal claims.",
         f"- [Contribution guide]({REPO}/blob/main/CONTRIBUTING.md)",
     ]
+    if discord:
+        lines += ["", "## Discord communities (owner-proven by the Aither bot)"]
+        for r in sorted(discord, key=lambda x: x.title.lower()):
+            lines.append(f"- [{r.title}]({BASE}/e/{_slug(r)}/): {r.url} "
+                         f"({netindex.TIERS[netindex.trust(r)]})")
     if biz:
         lines += ["", "## Businesses and organisations"]
         for r in sorted(biz, key=lambda x: x.title.lower()):
@@ -293,7 +382,8 @@ def _page(records: list, sha: str) -> str:
         edges = "; ".join(f"{e(x.get('rel', ''))} &rarr; {e(x.get('to', ''))}" for x in r.edges)
         v = r.provenance.get("validated", {})
         tier = netindex.TIERS[netindex.trust(r)]
-        rows.append(f"<tr id=\"{e(r.id, quote=True)}\"><td>{e(r.kind)}</td><td>{link}<div class='t'>{tags}</div></td>"
+        rows.append(f"<tr id=\"{e(r.id, quote=True)}\"><td>{e(r.kind)}</td><td>{link}{_badge(r)}"
+                    f"<div class='t'>{tags}</div></td>"
                     f"<td>{names}</td><td class='m'>{edges}</td>"
                     f"<td class='m'>{e(str(v.get('at', '')))} &middot; "
                     f"{e(str(v.get('method', '')))} &middot; <b>{e(tier)}</b></td></tr>")

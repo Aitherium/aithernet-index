@@ -2,7 +2,7 @@
 """Validate the git-tracked AitherNet Index (records/).
 
 Exit 0 clean, 1 violation, 2 could not judge (no records found / unreadable root).
-Rules NI000-NI010 live in ``netindex.py::validate``.
+Rules NI000-NI012 live in ``netindex.py::validate``.
 
     python check.py
     python check.py --resolve docs.aither
@@ -39,6 +39,29 @@ def _run(root: Path) -> int:
     return 1 if findings else 0
 
 
+_GUILD = "123456789012345678"
+_MGR = "discord:987654321098765432"
+
+
+def _discord(**over: object) -> dict:
+    """A valid Discord-community record, with the named parts overridden.
+
+    A ``stamp`` key merges into the default stamp; a value of ``None`` deletes it.
+    """
+    given = over.pop("stamp", None)
+    stamp = {"at": "2026-01-01", "by": "aithernet-bot", "method": "discord-bot",
+             "guild": _GUILD, "requested_by": _MGR}
+    if given is not None:
+        stamp = {k: v for k, v in {**stamp, **given}.items() if v is not None}
+    rec = {"id": "discord_" + _GUILD, "kind": "discord", "title": "Seed Library",
+           "url": "https://discord.gg/abc123", "tags": ["gardening", "seeds"],
+           "listing": {"guild": _GUILD, "member_band": "100-499"},
+           "provenance": {"added_by": "github:" + netindex.DISCORD_BOT_SUBMITTERS[0],
+                          "sources": ["https://discord.gg/abc123"], "validated": stamp}}
+    rec.update(over)
+    return rec
+
+
 def _self_test() -> int:
     good = {"id": "a", "kind": "site", "title": "A", "url": "https://a.example",
             "names": ["a.aither"], "route": {"type": "web", "target": "https://a.example"},
@@ -55,6 +78,14 @@ def _self_test() -> int:
                         "vouches": [{"by": "t", "at": "2026-01-02"}]}}], {"NI009"}),
         "future validation": ([{**good, "provenance": {**good["provenance"], "validated":
                                {"at": "2999-01-01", "by": "t", "method": "m"}}}], {"NI008"}),
+        "owner-asserted by a stranger": ([{**good, "provenance": {
+            "added_by": "github:attacker", "sources": ["x"],
+            "validated": {"at": "2026-01-01", "by": "github:attacker",
+                          "method": "owner-asserted"}}}], {"NI008"}),
+        "owner-asserted by the operator": ([{**good, "provenance": {
+            "added_by": "aither", "sources": ["x"],
+            "validated": {"at": "2026-01-01", "by": "aither",
+                          "method": "owner-asserted"}}}], set()),
         "good business": ([{**good, "kind": "business", "listing": {
             "description": "Bakery", "category": "bakery", "address": "1 Main St",
             "area_served": "Springfield", "phone": "+1 (555) 010-0000", "email": "hi@a.example",
@@ -67,6 +98,56 @@ def _self_test() -> int:
         "bad geo": ([{**good, "listing": {"geo": {"lat": 200, "lng": 0}}}], {"NI010"}),
         "http same_as": ([{**good, "listing": {"same_as": ["http://a"]}}], {"NI010"}),
         "listing not object": ([{**good, "listing": "open 9-5"}], {"NI010"}),
+        # -- Discord communities (NI011 url/guild/band, NI012 stamp) -----------------
+        "good discord": ([_discord()], set()),
+        "discord invite not discord.gg": ([_discord(url="https://discordapp.com/invite/abc123")],
+                                          {"NI011"}),
+        "discord http invite": ([_discord(url="http://discord.gg/abc123")], {"NI007", "NI011"}),
+        "discord without a guild": ([_discord(listing={})], {"NI011", "NI012"}),
+        "discord guild not a snowflake": ([_discord(listing={"guild": "123"})],
+                                          {"NI011", "NI012"}),
+        "discord bad member band": ([_discord(listing={"guild": _GUILD,
+                                                       "member_band": "lots"})], {"NI011"}),
+        "discord stamp without requested_by": ([_discord(stamp={"requested_by": None})],
+                                               {"NI012"}),
+        "discord stamp without guild": ([_discord(stamp={"guild": None})], {"NI012"}),
+        "discord stamp with an extra field": ([_discord(stamp={"guild": _GUILD,
+                                                               "requested_by": _MGR,
+                                                               "note": "hi"})], {"NI012"}),
+        "discord stamp guild mismatch": ([_discord(stamp={"guild": "999999999999999999",
+                                                          "requested_by": _MGR})], {"NI012"}),
+        "discord stamp bad manager": ([_discord(stamp={"guild": _GUILD,
+                                                       "requested_by": "42"})], {"NI012"}),
+        "discord stamp wrong signer": ([_discord(stamp={"guild": _GUILD,
+                                                        "requested_by": _MGR,
+                                                        "by": "random"})], {"NI012"}),
+        "discord-bot stamp on a site": ([{**good, "provenance": {**good["provenance"],
+                                        "validated": {"at": "2026-01-01", "by": "aithernet-bot",
+                                                      "method": "discord-bot", "guild": _GUILD,
+                                                      "requested_by": _MGR}}}], {"NI012"}),
+        "discord listing knows only its facts": ([_discord(listing={"guild": _GUILD,
+                                                                    "members": ["a", "b"]})],
+                                                 {"NI010"}),
+        # -- no personal data may reach a Discord listing (NI010) ---------------------
+        "discord listing with an email": ([_discord(listing={"guild": _GUILD,
+                                                             "email": "a@b.example"})],
+                                          {"NI010"}),
+        "discord listing with a phone": ([_discord(listing={"guild": _GUILD,
+                                                            "phone": "+1 555 010 0000"})],
+                                         {"NI010"}),
+        "discord listing with a description": ([_discord(listing={"guild": _GUILD,
+                                                                  "description": "hi"})],
+                                               {"NI010"}),
+        # -- the stamp is only ever the bot's (NI012) ---------------------------------
+        "discord entry proved by anything else": ([_discord(stamp={"method": "owner-asserted",
+                                                                   "guild": None,
+                                                                   "requested_by": None})],
+                                                  {"NI008", "NI012"}),
+        "discord-bot stamp from a stranger": ([_discord(provenance={
+            "added_by": "github:attacker", "sources": ["https://discord.gg/abc123"],
+            "validated": {"at": "2026-01-01", "by": "aithernet-bot",
+                          "method": "discord-bot", "guild": _GUILD,
+                          "requested_by": _MGR}})], {"NI012"}),
     }
     ok = True
     for label, (raws, want) in cases.items():
@@ -85,6 +166,27 @@ def _self_test() -> int:
     t_ok = tiers == [0, 3]
     ok &= t_ok
     print(f"{'PASS' if t_ok else 'FAIL'} trust tiers: want [0, 3] got {tiers}")
+    d_tier = netindex.trust(netindex._parse(None, _discord()))
+    stale = _discord()
+    stale["provenance"] = {**stale["provenance"],
+                           "stale": {"at": "2026-02-01", "reason": "invite did not resolve"}}
+    d_stale = netindex.trust(netindex._parse(None, stale))
+    # An unauthenticated claim ("owner-asserted") is not evidence and never ranks 2.
+    asserted = netindex.trust(netindex._parse(None, _discord(
+        stamp={"method": "owner-asserted", "guild": None, "requested_by": None})))
+    stranger = netindex.trust(netindex._parse(None, {**good, "provenance": {
+        "added_by": "github:attacker", "sources": ["x"],
+        "validated": {"at": "2026-01-01", "by": "github:attacker",
+                      "method": "owner-asserted"}}}))
+    operator = netindex.trust(netindex._parse(None, {**good, "provenance": {
+        "added_by": "aither", "sources": ["x"],
+        "validated": {"at": "2026-01-01", "by": "aither",
+                      "method": "owner-asserted"}}}))
+    d_ok = [d_tier, d_stale, asserted, stranger, operator] == [2, 0, 0, 0, 2]
+    ok &= d_ok
+    print(f"{'PASS' if d_ok else 'FAIL'} discord-bot ranks with owner-proven; stale drops; "
+          f"bare assertions do not: want [2, 0, 0, 0, 2] got "
+          f"{[d_tier, d_stale, asserted, stranger, operator]}")
     def _ev(e):
         return netindex.trust(netindex._parse(None, {**v2, "provenance": {
             **v2["provenance"], "evidence": e}}))

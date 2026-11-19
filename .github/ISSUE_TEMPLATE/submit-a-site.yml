@@ -10,11 +10,16 @@ body:
         could verify, and a maintainer reviews it. Own the site? Serve
         `/.well-known/aithernet.json` with `{"records": ["<id>"]}` and the entry is marked
         **owner-proven**.
+
+        **Discord communities are not submitted with this form.** A server has no host to
+        serve a proof file, so its listing is filed by the Aither bot itself, which is in
+        the server and can see that you hold **Manage Server**. Add the bot to your server
+        and ask it to list you; an issue typed here cannot prove ownership and is refused.
   - type: input
     id: url
     attributes:
       label: URL
-      description: The https:// address.
+      description: The https:// address. For a Discord community, the permanent invite.
       placeholder: https://example.com
     validations:
       required: true

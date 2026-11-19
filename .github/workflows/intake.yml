@@ -37,16 +37,43 @@ jobs:
       - name: build the record
         id: rec
         run: |
-          id=$(python intake.py --event "$GITHUB_EVENT_PATH") || {
-            gh issue comment "$ISSUE" --body "The bot could not read this submission. Check that the URL is https:// and the keyword looks like my-site.aither, then edit the issue."
-            exit 1; }
-          echo "id=$id" >> "$GITHUB_OUTPUT"
+          err="$(mktemp)"
+          if id=$(python intake.py --event "$GITHUB_EVENT_PATH" 2>"$err"); then
+            echo "id=$id" >> "$GITHUB_OUTPUT"
+          else
+            # Say WHY: a refused kind (e.g. a Discord listing not filed by the bot)
+            # needs a different fix than a malformed URL.
+            {
+              echo "The bot could not take this submission."
+              echo
+              echo '```'
+              tail -c 1500 "$err"
+              echo '```'
+              echo
+              echo "Edit the issue and it will be read again."
+            } > /tmp/why.md
+            gh issue comment "$ISSUE" --body-file /tmp/why.md
+            exit 1
+          fi
       - name: verify (stamps only what it can see)
         env:
           RID: ${{ steps.rec.outputs.id }}
         run: python verify.py --ids "$RID" --stamp || true
       - name: check
         run: python check.py
+      - name: attest the Discord proof (only when the bot token is configured)
+        env:
+          RID: ${{ steps.rec.outputs.id }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          if ! grep -q '"kind": "discord"' "records/${RID}.json"; then exit 0; fi
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "No DISCORD_BOT_TOKEN: the stamp rests on the bot's own issue author."
+            exit 0
+          fi
+          python verify.py --ids "$RID" --discord-attest || {
+            gh issue comment "$ISSUE" --body "The bot could not confirm this Discord listing (its invite or the requesting manager's Manage Server permission), so no owner-proven pull request was opened."
+            exit 1; }
       - name: open the pull request
         env:
           RID: ${{ steps.rec.outputs.id }}
