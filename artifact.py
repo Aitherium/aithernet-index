@@ -20,7 +20,15 @@ A listing satisfies the rule with ONE of:
 
 Every form is matched against the exact index host and the exact record id, so a link
 to a look-alike domain (index-aitherium.example, index.aitherium.com.evil.example) or
-to a different entry does not count. Stdlib only.
+to a different entry does not count. A form hidden by markup is not a link a person
+(and therefore not a link an index) can see, so it does not count either: anchors
+under ``display:none``, ``visibility:hidden``, ``opacity:0``, ``font-size:0``,
+zero-size or off-screen positioning, the ``hidden`` attribute, ``aria-hidden=true``,
+a hiding CSS class declared in a ``<style>`` block, or whose only text is zero-width
+are rejected. So is any ``<link>``/``<meta>`` inside ``<template>``, ``<noscript>``,
+``<svg>`` or a comment: inert markup is not a served backlink.
+
+Stdlib only.
 
     python artifact.py --self-test
 """
@@ -29,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -39,13 +48,44 @@ from typing import Optional
 
 INDEX_HOST = "index.aitherium.com"
 INDEX_BASE = f"https://{INDEX_HOST}"
-UA = "aithernet-index-recheck/1 (+https://index.aitherium.com/llms.txt)"
-# Kinds the backlink rule does not cover: they have their own proof (the bot re-checks
-# the Discord invite), so the re-check skips them rather than failing them.
+
+# What a browser announces. Looking like the checker is exactly what lets a site serve
+# us a different page than it serves everyone else, so the *page* fetch uses this.
+BROWSER_UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/126.0.0.0 Safari/537.36")
+# How the checker identifies itself. Used for the second, comparison fetch so a
+# UA-keyed response is visible instead of trusted (recheck.py).
+CHECKER_UA = "aithernet-index-recheck/1 (+https://index.aitherium.com/llms.txt)"
+# Backwards-compatible name: verify.py imports artifact.UA.
+UA = BROWSER_UA
+
+# The backlink rule does not apply to communities that prove themselves another way
+# (the Discord bot is IN the server, see the parallel feat/discord-owner-proof branch),
+# and hosts that cannot ever serve a file on the listed page are exempt by host, not by
+# kind: a `world` record whose url is discord.gg must not be suspended for a backlink
+# discord.com will never let it carry.
 EXEMPT_KINDS = {"discord", "community"}
+EXEMPT_HOSTS = {"discord.gg", "discord.com", "discordapp.com", "discord.media"}
+# First-party services (Aitherium's own relay rooms/docs/blogs) are not asked to carry a
+# backlink to themselves; they are covered by the integrity of our own deployment.
+FIRST_PARTY_HOSTS = {"aitherium.com"}
 
 FORMS = ("well-known", "link-rel", "meta", "visible-link")
 _SKIP = {"script", "style", "noscript", "svg", "template"}
+# One declaration that makes an element unreachable to a reader.
+_HIDE_STYLE = re.compile(
+    r"display\s*:\s*none"
+    r"|visibility\s*:\s*hidden"
+    r"|opacity\s*:\s*0(?:\.0+)?(?:\s*[;!}]|$)"
+    r"|font-size\s*:\s*0(?:px|em|rem|%|pt)?(?:\s*[;!}]|$)"
+    r"|(?:width|height)\s*:\s*0(?:px|em|rem|%|pt)?(?:\s*[;!}]|$)"
+    r"|text-indent\s*:\s*-\d{2,}"
+    r"|(?:left|top)\s*:\s*-\d{3,}",
+    re.IGNORECASE,
+)
+_CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}", re.DOTALL)
+_CSS_SELECTOR = re.compile(r"\.([A-Za-z0-9_-]+)|#([A-Za-z0-9_-]+)")
+_ALNUM = re.compile(r"[0-9a-z]", re.IGNORECASE)
 
 
 @dataclass
@@ -70,9 +110,14 @@ class Fetch:
         return self.status == 200
 
 
-def fetch(url: str, timeout: float = 15, limit: int = 262144) -> Fetch:
-    """GET a page the way a browser would: follow redirects, polite UA, bounded read."""
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+def fetch(url: str, timeout: float = 15, limit: int = 262144,
+          ua: Optional[str] = None) -> Fetch:
+    """GET a page the way a browser would: follow redirects, browser UA, bounded read.
+
+    ``ua`` overrides the User-Agent; the re-check uses that to compare what a browser
+    sees with what the checker sees.
+    """
+    req = urllib.request.Request(url, headers={"User-Agent": ua or BROWSER_UA})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (https only checked by caller)
             raw = resp.read(limit)
@@ -89,6 +134,28 @@ def host_of(url: str) -> str:
         return (urllib.parse.urlsplit(url).hostname or "").lower()
     except ValueError:
         return ""
+
+
+def exempt_reason(kind: str, url: str) -> str:
+    """Why this record is outside the backlink rule, or '' when it is inside it.
+
+    Exemption is by *host* as well as kind: ``world_aitherium`` is kind ``world`` but
+    lives on discord.gg, which can never serve a backlink on the listed page.
+    """
+    if (kind or "").strip().lower() in EXEMPT_KINDS:
+        return "exempt: community kind, verified by its own bot"
+    host = host_of(url or "")
+    if not host:
+        return ""
+    if host in EXEMPT_HOSTS or any(host.endswith("." + h) for h in EXEMPT_HOSTS):
+        return "exempt: Discord host, verified by its own bot"
+    if host in FIRST_PARTY_HOSTS or any(host.endswith("." + h) for h in FIRST_PARTY_HOSTS):
+        return "exempt: first-party Aitherium service"
+    return ""
+
+
+def is_exempt(kind: str, url: str) -> bool:
+    return bool(exempt_reason(kind, url))
 
 
 def claimed_ids(body: str) -> "list[str]":
@@ -127,43 +194,121 @@ def backlink_id(href: str, record_id: str) -> bool:
     return target in {record_id, record_id.replace(":", "_")}
 
 
+def _attr_map(attrs: "list[tuple[str, Optional[str]]]") -> "dict[str, str]":
+    return {k.lower(): (v if v is not None else "") for k, v in attrs}
+
+
+def _inline_hidden(a: "dict[str, str]") -> bool:
+    """Is this element itself hidden by markup or an inline style?"""
+    if "hidden" in a:                       # bare ``hidden`` or hidden="anything"
+        return True
+    if a.get("aria-hidden", "").strip().lower() == "true":
+        return True
+    return bool(_HIDE_STYLE.search(a.get("style", "") or ""))
+
+
 class _Page(HTMLParser):
-    """The parts of a page the artifact rule looks at, plus the visible anchor text."""
+    """The parts of a page the artifact rule looks at, plus visible anchor text.
+
+    Tracks three independent states while walking the markup: inert regions
+    (``<template>``/``<noscript>``/``<svg>``/``<script>``/``<style>``), hidden
+    ancestors (markup or inline style), and the currently open anchor.
+    """
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.meta_aithernet: "list[str]" = []
         self.link_rel: "list[str]" = []
         self.anchors: "list[dict]" = []
+        self.hidden_classes: "set[str]" = set()
+        self.hidden_ids: "set[str]" = set()
         self._anchor: Optional[dict] = None
-        self._skip = 0
-        self._in_head = 0
+        self._skip_tags: "list[str]" = []
+        self._hidden_tags: "list[str]" = []
+        self._in_style = False
+        self._style_buf: "list[str]" = []
 
+    # -- helpers ---------------------------------------------------------------
+    @staticmethod
+    def _drop(tags: "list[str]", tag: str) -> None:
+        for i in range(len(tags) - 1, -1, -1):
+            if tags[i] == tag:
+                del tags[i]
+                return
+
+    def _class_hidden(self, a: "dict[str, str]") -> bool:
+        if not (self.hidden_classes or self.hidden_ids):
+            return False
+        if a.get("id", "").strip() in self.hidden_ids:
+            return True
+        return any(c in self.hidden_classes for c in a.get("class", "").split())
+
+    def _read_style(self) -> None:
+        """Remember classes/ids a ``<style>`` block declares as hidden."""
+        for selectors, body in _CSS_RULE.findall("".join(self._style_buf)):
+            if not _HIDE_STYLE.search(body):
+                continue
+            for sel in selectors.split(","):
+                for m in _CSS_SELECTOR.finditer(sel):
+                    if m.group(1):
+                        self.hidden_classes.add(m.group(1))
+                    elif m.group(2):
+                        self.hidden_ids.add(m.group(2))
+
+    # -- parser ----------------------------------------------------------------
     def handle_starttag(self, tag: str, attrs: "list[tuple[str, Optional[str]]]") -> None:
-        a = {k.lower(): (v or "") for k, v in attrs}
-        if tag == "head":
-            self._in_head += 1
-        elif tag in _SKIP:
-            self._skip += 1
-        elif tag == "meta" and a.get("name", "").strip().lower() == "aithernet":
+        tag = tag.lower()
+        a = _attr_map(attrs)
+        if tag == "style":
+            self._in_style = True
+            self._style_buf = []
+            return
+        if self._in_style:
+            return                              # raw text of a <style> block
+        if tag in _SKIP:
+            self._skip_tags.append(tag)
+            return
+        if self._skip_tags:
+            return                              # inert content, never a backlink
+        hidden_here = (not self._hidden_tags
+                       and (_inline_hidden(a) or self._class_hidden(a)))
+        if hidden_here:
+            self._hidden_tags.append(tag)
+        if tag == "meta" and a.get("name", "").strip().lower() == "aithernet":
             self.meta_aithernet.append(a.get("content", "").strip())
         elif tag == "link" and "aithernet" in a.get("rel", "").lower().split():
             self.link_rel.append(a.get("href", "").strip())
         elif tag == "a" and self._anchor is None:
-            self._anchor = {"href": a.get("href", "").strip(), "text": []}
+            self._anchor = {"href": a.get("href", "").strip(), "text": [],
+                            "visible": not self._hidden_tags}
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "head" and self._in_head:
-            self._in_head -= 1
-        elif tag in _SKIP and self._skip:
-            self._skip -= 1
-        elif tag == "a" and self._anchor is not None:
+        tag = tag.lower()
+        if tag == "style":
+            if self._in_style:
+                self._read_style()
+                self._in_style = False
+                self._style_buf = []
+            return
+        if self._in_style:
+            return
+        if tag in _SKIP:
+            self._drop(self._skip_tags, tag)
+            return
+        if self._hidden_tags:
+            self._drop(self._hidden_tags, tag)
+        if tag == "a" and self._anchor is not None:
             text = " ".join("".join(self._anchor["text"]).split())
-            self.anchors.append({"href": self._anchor["href"], "text": text})
+            self.anchors.append({"href": self._anchor["href"], "text": text,
+                                 "visible": self._anchor["visible"]})
             self._anchor = None
 
     def handle_data(self, data: str) -> None:
-        if self._anchor is not None and not self._skip:
+        if self._in_style:
+            self._style_buf.append(data)
+            return
+        if (self._anchor is not None and not self._skip_tags
+                and not self._hidden_tags):
             self._anchor["text"].append(data)
 
 
@@ -191,7 +336,7 @@ def detect(record_id: str, html: str, well_known: "list[str]") -> Artifact:
         if content.strip() == rid:
             return Artifact("meta", '<meta name="aithernet"> names this record')
     for a in parts.anchors:
-        if a["text"] and backlink_id(a["href"], rid):
+        if a["visible"] and _ALNUM.search(a["text"]) and backlink_id(a["href"], rid):
             return Artifact("visible-link", f'visible link to {a["href"]}')
     # Say what was seen, so the maintainer reading the issue knows what to fix.
     seen = []
@@ -204,7 +349,13 @@ def detect(record_id: str, html: str, well_known: "list[str]") -> Artifact:
         if backlink_id(a["href"], "__none__"):
             continue
         if "index.aitherium.com" in a["href"] or "aithernet" in (a["href"] + a["text"]).lower():
-            seen.append(f"anchor {a['href']!r} (not this entry or not visible text)")
+            if not a["visible"]:
+                why = "not visible"
+            elif not _ALNUM.search(a["text"]):
+                why = "no visible text"
+            else:
+                why = "not this entry"
+            seen.append(f"anchor {a['href']!r} ({why})")
     detail = ("; ".join(seen[:3])) if seen else "no backlink found"
     return Artifact(None, detail)
 
@@ -226,6 +377,7 @@ def _self_test() -> int:
     good_anchor = f'<a href="https://{INDEX_HOST}/r/{rid}">Listed on AitherNet</a>'
     good_link = f'<link rel="aithernet" href="https://{INDEX_HOST}/r/{rid}/">'
     good_meta = f'<meta name="aithernet" content="{rid}">'
+    lk = f'<a href="https://{INDEX_HOST}/r/{rid}">x</a>'
     cases = [
         # (label, html, well_known_ids, expected form)
         ("well-known", "<p>anything</p>", [rid], "well-known"),
@@ -242,10 +394,27 @@ def _self_test() -> int:
         ("other id well-known", "<p>x</p>", ["other.example"], None),
         ("meta other id", f'<meta name="aithernet" content="other.example">', [], None),
         ("hidden anchor (no text)", f'<a href="https://{INDEX_HOST}/r/{rid}"></a>', [], None),
+        ("zero-width text", f'<a href="https://{INDEX_HOST}/r/{rid}">&#x200b;</a>', [], None),
         ("userinfo trick", f'<a href="https://{INDEX_HOST}@evil.example/r/{rid}">x</a>', [], None),
         ("wrong rel", f'<html><head><link rel="stylesheet" href="https://{INDEX_HOST}/r/{rid}">'
                       f"</head><body>x</body></html>", [], None),
         ("id as substring", f'<a href="https://{INDEX_HOST}/r/{rid}-extra">x</a>', [], None),
+        # hidden markup must NOT count
+        ("display none", f'<div style="display:none">{lk}</div>', [], None),
+        ("hidden attr", f'<div hidden>{lk}</div>', [], None),
+        ("aria hidden", f'<div aria-hidden="true">{lk}</div>', [], None),
+        ("offscreen", f'<div style="position:absolute;left:-9999px">{lk}</div>', [], None),
+        ("font size 0", f'<div style="font-size:0">{lk}</div>', [], None),
+        ("opacity 0", f'<div style="opacity:0">{lk}</div>', [], None),
+        ("visibility hidden", f'<div style="visibility:hidden">{lk}</div>', [], None),
+        ("css class hidden", f"<style>.ghost{{display:none}}</style>"
+                             f'<div class="ghost">{lk}</div>', [], None),
+        ("link in template", f"<template>{good_link}</template>", [], None),
+        ("meta in template", f"<html><head><template>{good_meta}</template>"
+                             "</head><body>x</body></html>", [], None),
+        ("link in noscript", f"<noscript>{good_link}</noscript>", [], None),
+        ("link in svg", f"<svg>{good_link}</svg>", [], None),
+        ("link in comment", f"<!-- {good_link} -->", [], None),
     ]
     ok = True
     for label, html, wk, want in cases:
@@ -257,6 +426,12 @@ def _self_test() -> int:
     parsed = claimed_ids(body) == [rid, "x"] and claimed_ids("<html>") == []
     ok &= parsed
     print(f"{'PASS' if parsed else 'FAIL'} well-known parsing")
+    ex = (is_exempt("world", "https://discord.gg/xMv9hHKkkh")
+          and is_exempt("room", "https://relay.aitherium.com/room/x")
+          and is_exempt("discord", "https://example.com")
+          and not is_exempt("garden", "https://garden.example"))
+    ok &= ex
+    print(f"{'PASS' if ex else 'FAIL'} exemption by host and kind")
     return 0 if ok else 1
 
 

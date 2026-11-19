@@ -63,21 +63,31 @@ visible text does not count.
 
 Every listed site is re-checked once a day (`recheck.py`, `.github/workflows/recheck.yml`):
 
-- the artifact above must still be there;
-- the page must still redirect to the same host and still be substantially the same
-  page (fingerprint: normalised title + meta description + a hash of the visible text;
-  a large text change is a token similarity below 0.5);
+- the artifact above must still be there. A new listing is not approved without it: the
+  30-day grace period applies only to entries listed before the rule shipped
+  (2026-11-18);
+- the page must still redirect to the same host (a server-side redirect *or* a
+  `<meta http-equiv=refresh>` / `location=...` redirect) and still be substantially the
+  same page (fingerprint of the main visible text; a large change is a token similarity
+  below 0.65). A page that serves the checker a different body than it serves a browser
+  is a failure too. Hidden markup does not count as the backlink;
 - the URL must still answer.
 
-Entries move `active → warn → suspended` (3 consecutive failures, or the final host
-changed) `→ delisted` (14 days suspended). A delisted entry is hidden from the listing
-and says `status: delisted` in `index.json`, but its record and page are kept, with the
-reason. A clean check returns it to `active`. Maintainers are told by one GitHub issue
-per entry (label `recheck`), closed automatically when it recovers. Nothing is ever
-deleted.
+Entries move `active → warn → suspended` (3 failures inside 7 days, or the final host
+changed) `→ delisted` (14 days suspended). Failures are counted over a rolling week and
+are not cleared by one good day, so a flapping site cannot stay listed. `warn`,
+`suspended` and `delisted` are all hidden from the listing and sitemap; `index.json`
+still carries `status`, and the entry page stays up with the reason. A clean check
+returns it to `active` once the week is no longer mostly failures. Maintainers are told
+by one GitHub issue per entry (label `recheck`), closed automatically when it recovers.
+Nothing is ever deleted.
+
+Delisting an entry is just deleting its `records/<id>.json` in a PR. The next daily run
+prunes its `state/health.json` entry; you do not have to edit the state by hand.
 
 A legitimate rebuild of your page shows up as a content change. A maintainer clears it
-with `python recheck.py --accept <id>`, which re-seeds the fingerprint.
+with `python recheck.py --accept <id>`, which re-seeds the fingerprint (and records the
+acceptance, so the state change is auditable).
 
 ## Vouch for an entry
 

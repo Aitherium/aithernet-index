@@ -16,7 +16,9 @@ https://index.aitherium.com/r/<id>. The re-check job (recheck.py) enforces it ov
 time; here it is reported at listing time, and --stamp records the page fingerprint
 the re-check later compares against.
 
-Stdlib only. Exit 0 all reachable, 1 any unreachable, 2 nothing to check.
+Stdlib only. Exit 0 every checked page carries its artifact, 1 any unreachable or
+reachable-without-a-backlink page (a listing without the artifact is not approved),
+2 nothing to check. Exempt communities (Discord, first-party services) are skipped.
 """
 
 from __future__ import annotations
@@ -67,7 +69,15 @@ def evidence(rec: netindex.Record) -> dict:
     det = artifact.detect(rec.id, page.body, claimed)
     out["artifact"] = det.form
     out["artifact_reason"] = det.reason
-    out["method"] = "well-known" if det.form == "well-known" else "http-200"
+    # A page with no backlink is NOT approved: stamping it "http-200" would turn a
+    # reachable-but-unlinked site into a trusted listing with nothing to re-check.
+    if det.form == "well-known":
+        out["method"] = "well-known"
+    elif det.ok:
+        out["method"] = "http-200"
+    else:
+        out["method"] = None
+        out["note"] = det.reason
     out["fingerprint"] = fingerprint.page(page.body, host)
     return out
 
@@ -83,16 +93,20 @@ def main() -> int:
     if a.ids:
         wanted = set(a.ids)
         records = [r for r in records if r.id in wanted]
-    records = [r for r in records if r.url]
+    records = [r for r in records if r.url
+               and not artifact.exempt_reason(r.kind, r.url)]
     if not records:
         print("nothing to check")
         return 2
-    down = 0
+    down = unproven = 0
     for rec in records:
         ev = evidence(rec)
         print(json.dumps(ev))
         if ev["method"] is None:
-            down += 1
+            if ev.get("status") == 200:
+                unproven += 1          # reachable but carries no backlink artifact
+            else:
+                down += 1              # unreachable
             continue
         current = (rec.provenance.get("validated") or {}).get("method")
         if a.stamp and current != "owner-asserted":
@@ -107,8 +121,9 @@ def main() -> int:
                                        "at": dt.date.today().isoformat(),
                                        "artifact": ev.get("artifact")}
             rec.path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
-    print(f"verify: {len(records)} checked, {down} unreachable")
-    return 1 if down else 0
+    print(f"verify: {len(records)} checked, {down} unreachable, "
+          f"{unproven} reachable without a backlink")
+    return 1 if (down or unproven) else 0
 
 
 if __name__ == "__main__":

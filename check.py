@@ -2,9 +2,10 @@
 """Validate the git-tracked AitherNet Index (records/).
 
 Exit 0 clean, 1 violation, 2 could not judge (no records found / unreadable root).
-Record rules NI000-NI010 live in ``netindex.py::validate``; NI011 (the re-check's
-``state/health.json``) lives in ``recheck.py::state_findings`` and is checked here so
-there is one validator, never two.
+Record rules NI000-NI010 live in ``netindex.py::validate``; the re-check's
+``state/health.json`` (NI020/NI021) and the "approved without an artifact" rule
+(NI022) live in ``recheck.py`` and are checked here so there is one validator,
+never two.
 
     python check.py
     python check.py --resolve docs.aither
@@ -35,6 +36,9 @@ def _run(root: Path, state_path: "Path | None" = None) -> int:
         print(f"could not judge: no records under {root}")
         return 2
     findings += netindex.validate(records)
+    # NI022: a listing approved after the artifact rule shipped must have been stamped
+    # with the backlink it carries. Offline: it reads provenance, never the network.
+    findings += recheck.artifact_findings(records)
     if state_path is not None and Path(state_path).exists():
         findings += recheck.state_findings(recheck.load_state(state_path), records)
     for f in findings:
@@ -105,18 +109,58 @@ def _self_test() -> int:
     with tempfile.TemporaryDirectory() as d:
         empty_ok = _run(Path(d)) == 2
     print(f"{'PASS' if empty_ok else 'FAIL'} empty root exits 2")
-    # NI011: the re-check state is machine-written, but a bad commit is still a finding.
+    # NI020/NI021: the re-check state is machine-written, but a bad commit is a finding.
     rec = netindex._parse(None, good)
-    clean_state = {"version": 1, "grace_starts": "2026-11-18", "grace_days": 30,
+    clean_state = {"version": 2, "grace_starts": "2026-11-18", "grace_days": 30,
                    "entries": {"a": {"status": "warn"}}}
-    bad_state = {"version": 1, "grace_starts": "2026-11-18", "grace_days": 30,
+    bad_state = {"version": 2, "grace_starts": "2026-11-18", "grace_days": 30,
                  "entries": {"a": {"status": "exploded"}, "ghost": {"status": "active"}}}
+    # An orphan entry (record deleted by a delist PR) is pruned by the next run and is
+    # not a finding; a bad status is.
     s_ok = (recheck.state_findings(clean_state, [rec]) == []
-            and {f.code for f in recheck.state_findings(bad_state, [rec])} == {"NI011"}
-            and len(recheck.state_findings(bad_state, [rec])) == 2)
+            and {f.code for f in recheck.state_findings(bad_state, [rec])} == {"NI020"}
+            and len(recheck.state_findings(bad_state, [rec])) == 1)
     ok &= s_ok
-    print(f"{'PASS' if s_ok else 'FAIL'} NI011 state/health.json")
-    return 0 if ok and r_ok and empty_ok and s_ok else 1
+    print(f"{'PASS' if s_ok else 'FAIL'} NI020 state/health.json")
+    # NI022: a listing approved after 2026-11-18 must have been stamped with the
+    # artifact it carries; a pre-grace record and an exempt community are not judged.
+    late = {**good, "provenance": {**good["provenance"], "validated":
+            {"at": "2026-11-20", "by": "t", "method": "http-200"}}}
+    stamped = {**late, "provenance": {**late["provenance"],
+               "fingerprint": {"artifact": "meta"}}}
+    old = {**good, "provenance": {**good["provenance"], "validated":
+           {"at": "2026-01-01", "by": "t", "method": "http-200"}}}
+    disco = {**late, "id": "discord_1", "kind": "discord",
+             "url": "https://discord.gg/abc"}
+    a_codes = [[f.code for f in recheck.artifact_findings([netindex._parse(None, x)])]
+               for x in (late, stamped, old, disco)]
+    want = [[recheck.ARTIFACT_RULE], [], [], []]
+    a_ok = a_codes == want
+    ok &= a_ok
+    print(f"{'PASS' if a_ok else 'FAIL'} NI022 approved record needs an artifact: "
+          f"want {want} got {a_codes}")
+    state_p = recheck.DEFAULT_STATE
+    rel = Path("records")
+    rel_ok = (rel.resolve() != netindex.DEFAULT_ROOT.resolve()
+              or state_for_root(rel, state_p) == state_p)
+    r_ok = (state_for_root(netindex.DEFAULT_ROOT, state_p) == state_p and rel_ok
+            and state_for_root(tempfile.gettempdir(), state_p) is None)
+    ok &= r_ok
+    print(f"{'PASS' if r_ok else 'FAIL'} explicit --root records validates state")
+    return 0 if ok and empty_ok and s_ok and a_ok and r_ok else 1
+
+
+def state_for_root(root: Path, state: Path) -> "Path | None":
+    """The state file to judge, or None when --root is not this repo's records.
+
+    Compares resolved paths so the documented `check.py --root records` spelling is
+    judged too (a relative Path never equals the absolute default by string).
+    """
+    try:
+        same = Path(root).resolve() == netindex.DEFAULT_ROOT.resolve()
+    except OSError:
+        same = False
+    return state if (state.exists() and same) else None
 
 
 def main() -> int:
@@ -132,10 +176,7 @@ def main() -> int:
         hit = netindex.Index.from_root(a.root).resolve(a.resolve)
         print(json.dumps(hit, indent=2) if hit else f"NXDOMAIN {a.resolve}")
         return 0 if hit else 1
-    # State describes THIS checkout's records, so it is only judged when we are
-    # checking the repo's own records/ directory (or one named explicitly with --root).
-    state = a.state if (a.state.exists() and a.root == netindex.DEFAULT_ROOT) else None
-    return _run(a.root, state)
+    return _run(a.root, state_for_root(a.root, a.state))
 
 
 if __name__ == "__main__":

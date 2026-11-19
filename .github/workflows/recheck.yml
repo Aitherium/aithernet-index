@@ -48,13 +48,17 @@ jobs:
           python recheck.py --root records --state state/health.json \
             --json-out "$RUNNER_TEMP/run.json" | tee "$RUNNER_TEMP/table.txt"
 
-      - name: the re-check must not touch records/
+      - name: the re-check must not touch records/ or any code
         run: |
-          if [ -n "$(git status --porcelain -- records)" ]; then
-            echo "::error::the re-check modified records/; refusing to continue"
-            git status --short -- records
+          # state/health.json is the only file this job may change. A state-only diff
+          # that quietly rewrites a baseline is caught by `python check.py` below
+          # (NI021), so run that gate before the commit can reach main.
+          if [ -n "$(git status --porcelain -- . ':(exclude)state/health.json')" ]; then
+            echo "::error::the re-check modified files other than state/health.json"
+            git status --short
             exit 1
           fi
+          python check.py
 
       - name: commit state/health.json
         run: |

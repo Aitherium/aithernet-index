@@ -42,7 +42,7 @@ import recheck  # noqa: E402
 DOMAIN = "index.aitherium.com"
 BASE = f"https://{DOMAIN}"
 REPO = "https://github.com/Aitherium/aithernet-index"
-HIDDEN = ("suspended", "delisted")
+HIDDEN = ("warn", "suspended", "delisted")
 
 
 def _sha(root: Path) -> str:
@@ -155,10 +155,11 @@ def _status_notice(r: netindex.Record, entry: dict) -> str:
     reasons = "; ".join(f"{f.get('code')}: {f.get('detail')}"
                         for f in entry.get("failures") or []) or "no reason recorded"
     return (f'<h2>Why this entry is hidden</h2><p>This listing is '
-            f"<b>{e(status)}</b>: the daily re-check found it is no longer the page "
-            f"that was approved, so it is not shown in the main listing. Nothing has "
-            f"been deleted. Reason: {e(reasons)}. It returns on its own the first time a "
-            f"check passes. If this is yours, see "
+            f"<b>{e(status)}</b>: the daily re-check found a problem — the page was "
+            f"unreachable, lost the backlink that proves it belongs to this index, or "
+            f"no longer looks like the page that was approved — so it is not shown in "
+            f"the main listing. Nothing has been deleted. Reason: {e(reasons)}. It "
+            f"returns on its own once the check passes again. If this is yours, see "
             f'<a href="/claim/">how to fix it</a>.</p>')
 
 

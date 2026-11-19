@@ -36,7 +36,11 @@ see: if the page is swapped, the new page almost never carries it.
 Both forms are matched against the exact host `index.aitherium.com`, an `https`
 scheme, and the exact record id. A link to another domain, a look-alike host
 (`index.aitherium.com.evil.example`), a different entry, or an anchor with no visible
-text does not count — the checker is written to fail closed.
+text does not count — the checker is written to fail closed. A backlink hidden from a
+reader is not a backlink: anchors under `display:none`, `visibility:hidden`,
+`opacity:0`, zero font size, an off-screen position, the `hidden` attribute,
+`aria-hidden=true`, a hiding CSS class, or only zero-width text are rejected, as are
+`<link>`/`<meta>` tags inside `<template>`, `<noscript>`, `<svg>` or a comment.
 
 ## Keeping the approval honest: the daily re-check
 
@@ -45,29 +49,50 @@ An approval is about a page at a moment. `recheck.py` (run daily by
 
 - the URL no longer answers;
 - the required artifact is gone (after a 30-day grace period, `grace_starts`
-  2026-11-18, for entries listed before this shipped);
-- the page now redirects to a different final host (domain sold, parked, redirected);
-- the visible text changed enough that token-set Jaccard similarity to the approved
-  page is below 0.5.
+  2026-11-18, for entries listed before this shipped). A record validated on or after
+  that date is a **new** listing: without its artifact it is not approved, so no grace;
+- the page now redirects to a different final host (domain sold, parked, redirected) —
+  including a client-side redirect (`<meta http-equiv=refresh>` or `location=...`),
+  which a server-side-only redirect check would miss;
+- the page serves a different body to the checker's User-Agent than to a browser
+  (UA-keyed cloaking);
+- the main visible text changed enough that token-set Jaccard similarity to the
+  approved page is below 0.65. The fingerprint reads `<main>`/`<article>` (or the body
+  without nav/header/footer/aside), so a shared template cannot dilute a swapped body,
+  and a text-less page (photo portfolio, JS shell) is compared by its assets instead
+  of an all-zero signature that matched everything.
 
 Failure moves an entry through a state machine kept in `state/health.json` — **not**
 in the records, so a record stays exactly what a human last reviewed:
 
 ```
 active --(first failure)--> warn
-warn --(3 consecutive days, or the final host changed)--> suspended
+warn --(3 failures inside 7 days, or the final host changed)--> suspended
 suspended --(14 days)--> delisted
-any status --(a clean check)--> active
+any status --(a clean check, if the last 7 days are no longer mostly failures)--> active
 ```
+
+Failures are counted over a rolling 7-day window and are **not** reset by a single good
+day: a site that is down two days in three is suspended on day four and cannot return
+to the listing until the window is clean. `warn` is hidden from the published listing
+too, so a permanently flapping entry stops being shown at all.
 
 Delisted never means deleted. `build_site.py` hides the entry from the listing,
 `index.json` carries `status: delisted`, and the entry page stays up with the reason.
 One GitHub issue per entry (label `recheck`) opens on suspend or a needs-review
 change and closes itself when the entry recovers. A maintainer who accepts a genuine
-rebuild re-seeds the fingerprint with `python recheck.py --accept <id>`.
+rebuild re-seeds the fingerprint with `python recheck.py --accept <id>`; the state
+records that as `baseline_source: accepted` with `accepted_at`, which is what
+`check.py` requires before it will accept a baseline that differs from the fingerprint
+stamped on the record. A state-only commit that silently re-seeds a baseline is a
+finding (NI021), and a cleared baseline is a `baseline-missing` failure, never a fresh
+trust-on-first-use.
 
-Discord-kind records (and any future `discord`/`community` kind) are exempt: the bot
-re-verifies their invite instead, and this checker skips them.
+Exemptions are by **host as well as kind**: `discord`/`community` records and any record
+whose URL is on `discord.gg`/`discord.com` are verified by the Aither bot instead, and
+Aitherium's own first-party services (e.g. `relay.aitherium.com` rooms) are covered by
+our deployment. A `world` record whose URL is a Discord invite is therefore exempt too;
+it is not suspended for a backlink the host can never serve.
 
 ## What is enforced today
 
@@ -81,10 +106,14 @@ re-verifies their invite instead, and this checker skips them.
   the check first.
 - **Owner proof beats impersonation.** A look-alike site cannot serve the real
   domain's `.well-known` file.
-- **NI011**: `state/health.json` is machine-written, but `check.py` still validates it
-  (known ids only, known statuses, well-formed counts) so a bad commit is caught.
+- **NI020/NI021**: `state/health.json` is machine-written, but `check.py` still
+  validates it (known statuses, well-formed counts, and a baseline that must match the
+  fingerprint stamped on the record unless a maintainer explicitly accepted a re-seed)
+  so a bad commit is caught. NI022 rejects a post-grace listing that was approved
+  without an artifact. (NI011/NI012 belong to the Discord branch.)
 - **The re-check writes only `state/health.json`.** It never edits `records/`, and the
-  workflow fails if that changes.
+  workflow fails if any other file changed. A delist PR does not need to hand-edit the
+  state: the next run prunes the entry for a record that no longer exists.
 
 ## What comes next
 

@@ -58,23 +58,31 @@ A listing must carry **one** backlink artifact, and the site is re-checked every
 ```
 
 `https://index.aitherium.com/r/<id>` is the stable shortlink for an entry, so you add it
-once. A look-alike domain or a different id does not count.
+once. A look-alike domain or a different id does not count, and a link hidden by CSS
+(`display:none`, off-screen, zero-size, a hiding class) does not count either.
 
 ## Kept honest: the daily re-check
 
-`recheck.py` runs every day (`recheck.yml`). It re-fetches every listed page, requires
-the artifact above, and compares each page with the fingerprint recorded when it was
-approved (normalised title + meta description + a hash of the visible text, plus the
-final host after redirects). A site that stops answering, drops its backlink, redirects
-to another host, or has its text substantially replaced (token similarity < 0.5) moves
-`active → warn → suspended → delisted`; a clean check brings it back to `active`.
+`recheck.py` runs every day (`recheck.yml`). It re-fetches every listed page as a
+browser and as the checker, requires the artifact above — a new listing is not approved
+without it; the grace period covers only entries listed before 2026-11-18 — and compares
+each page with the fingerprint recorded when it was approved (the main visible text,
+plus the final host after redirects). A site that stops answering, drops its backlink,
+redirects to another host (server-side *or* a meta/JS redirect), serves the checker a
+different page, or has its text substantially replaced (token similarity < 0.65) moves
+`active → warn → suspended → delisted`; a clean week brings it back to `active`.
+
+Failures are counted over a rolling week, so a site that flaps (down two days in three)
+is suspended rather than kept in `warn` forever, and `warn` is hidden from the listing
+like `suspended`/`delisted`.
 
 Delisted does not mean deleted: the entry is hidden from the listing, `index.json` says
 `status: delisted`, and its page stays up with the reason. State lives in
-`state/health.json`, never in `records/`. See [REPUTATION.md](REPUTATION.md).
+`state/health.json`, never in `records/`; deleting a record's JSON is enough to delist it
+and the next run prunes its state. See [REPUTATION.md](REPUTATION.md).
 
 The site shows each entry's status, last-checked date and artifact kind, and hides
-suspended/delisted entries from the main listing.
+warn/suspended/delisted entries from the main listing.
 
 ## List or claim a business
 
