@@ -15,7 +15,43 @@ next to every entry.
 | 0 | submitted | someone opened an issue | free |
 | 1 | reachable | the bot fetched the URL and got 200 | a live site |
 | 2 | owner-proven | the site serves `/.well-known/aithernet.json` naming the record | control of the domain |
+| 2 | owner-proven (Discord) | `discord-bot`: the Aither bot is IN the server and observed the requester hold Manage Server when they asked | control of the server, checked by the bot inside it |
 | 3 | vouched | tier 1+ AND two distinct people, other than the submitter, vouched | two real, aged accounts that are willing to sign |
+
+### Why a Discord stamp ranks with owner-proven
+
+A Discord server cannot serve `https://<host>/.well-known/aithernet.json`: it has no
+host of its own. What it has is an invite, and the same thing a site has: someone who
+controls it. The Aither bot is installed *in* the server. When a manager asks to be
+listed, the bot checks that the person making the request holds **Manage Server** in
+that guild, at that moment. That observation is the Discord equivalent of reading the
+`.well-known` file from the owner's own host: a stranger cannot make another server's
+manager press the button, and the bot can only be in a server its manager invited it
+to.
+
+So a `discord-bot` stamp carries who observed it and for whom:
+
+```json
+"validated": {
+  "at": "2026-11-18", "by": "aithernet-bot", "method": "discord-bot",
+  "guild": "123456789012345678", "requested_by": "discord:987654321098765432"
+}
+```
+
+**NI012** refuses that stamp unless it is exactly those five keys, the guild is a real
+server id that equals `listing.guild`, and `requested_by` names a Discord user. **NI011**
+refuses a Discord record whose `url` is not a `discord.gg` / `discord.com/invite`
+permanent invite, and a listing that carries anything beyond the guild and an optional
+member band (no member lists, no personal data). `verify.py` re-resolves the invite
+through `https://discord.com/api/v10/invites/<code>` (public, no token) and marks the
+entry `stale` when the invite stops resolving or names a different guild.
+
+The residual limit is stated plainly: the index records that the bot made the
+observation. A forged issue could claim a guild id and manager id, so the listed facts
+are only as good as the single door the bot files through, reviewed like every other
+contribution. What it never does is publish more than the manager chose: an invite, a
+server id, tags, a member band.
+
 
 ## What is enforced today
 

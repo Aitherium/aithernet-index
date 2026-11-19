@@ -39,6 +39,29 @@ def _run(root: Path) -> int:
     return 1 if findings else 0
 
 
+_GUILD = "123456789012345678"
+_MGR = "discord:987654321098765432"
+
+
+def _discord(**over: object) -> dict:
+    """A valid Discord-community record, with the named parts overridden.
+
+    A ``stamp`` key merges into the default stamp; a value of ``None`` deletes it.
+    """
+    given = over.pop("stamp", None)
+    stamp = {"at": "2026-01-01", "by": "aithernet-bot", "method": "discord-bot",
+             "guild": _GUILD, "requested_by": _MGR}
+    if given is not None:
+        stamp = {k: v for k, v in {**stamp, **given}.items() if v is not None}
+    rec = {"id": "discord_" + _GUILD, "kind": "discord", "title": "Seed Library",
+           "url": "https://discord.gg/abc123", "tags": ["gardening", "seeds"],
+           "listing": {"guild": _GUILD, "member_band": "100-499"},
+           "provenance": {"added_by": "github:aithernet-bot",
+                          "sources": ["https://discord.gg/abc123"], "validated": stamp}}
+    rec.update(over)
+    return rec
+
+
 def _self_test() -> int:
     good = {"id": "a", "kind": "site", "title": "A", "url": "https://a.example",
             "names": ["a.aither"], "route": {"type": "web", "target": "https://a.example"},
@@ -67,6 +90,36 @@ def _self_test() -> int:
         "bad geo": ([{**good, "listing": {"geo": {"lat": 200, "lng": 0}}}], {"NI010"}),
         "http same_as": ([{**good, "listing": {"same_as": ["http://a"]}}], {"NI010"}),
         "listing not object": ([{**good, "listing": "open 9-5"}], {"NI010"}),
+        # -- Discord communities (NI011 url/guild/band, NI012 stamp) -----------------
+        "good discord": ([_discord()], set()),
+        "discord invite not discord.gg": ([_discord(url="https://discordapp.com/invite/abc123")],
+                                          {"NI011"}),
+        "discord http invite": ([_discord(url="http://discord.gg/abc123")], {"NI007", "NI011"}),
+        "discord without a guild": ([_discord(listing={})], {"NI011", "NI012"}),
+        "discord guild not a snowflake": ([_discord(listing={"guild": "123"})],
+                                          {"NI011", "NI012"}),
+        "discord bad member band": ([_discord(listing={"guild": _GUILD,
+                                                       "member_band": "lots"})], {"NI011"}),
+        "discord stamp without requested_by": ([_discord(stamp={"requested_by": None})],
+                                               {"NI012"}),
+        "discord stamp without guild": ([_discord(stamp={"guild": None})], {"NI012"}),
+        "discord stamp with an extra field": ([_discord(stamp={"guild": _GUILD,
+                                                               "requested_by": _MGR,
+                                                               "note": "hi"})], {"NI012"}),
+        "discord stamp guild mismatch": ([_discord(stamp={"guild": "999999999999999999",
+                                                          "requested_by": _MGR})], {"NI012"}),
+        "discord stamp bad manager": ([_discord(stamp={"guild": _GUILD,
+                                                       "requested_by": "42"})], {"NI012"}),
+        "discord stamp wrong signer": ([_discord(stamp={"guild": _GUILD,
+                                                        "requested_by": _MGR,
+                                                        "by": "random"})], {"NI012"}),
+        "discord-bot stamp on a site": ([{**good, "provenance": {**good["provenance"],
+                                        "validated": {"at": "2026-01-01", "by": "aithernet-bot",
+                                                      "method": "discord-bot", "guild": _GUILD,
+                                                      "requested_by": _MGR}}}], {"NI012"}),
+        "discord listing knows only its facts": ([_discord(listing={"guild": _GUILD,
+                                                                    "members": ["a", "b"]})],
+                                                 {"NI010"}),
     }
     ok = True
     for label, (raws, want) in cases.items():
@@ -85,6 +138,15 @@ def _self_test() -> int:
     t_ok = tiers == [0, 3]
     ok &= t_ok
     print(f"{'PASS' if t_ok else 'FAIL'} trust tiers: want [0, 3] got {tiers}")
+    d_tier = netindex.trust(netindex._parse(None, _discord()))
+    stale = _discord()
+    stale["provenance"] = {**stale["provenance"],
+                           "stale": {"at": "2026-02-01", "reason": "invite did not resolve"}}
+    d_stale = netindex.trust(netindex._parse(None, stale))
+    d_ok = [d_tier, d_stale] == [2, 0]
+    ok &= d_ok
+    print(f"{'PASS' if d_ok else 'FAIL'} discord-bot ranks with owner-proven; stale drops: "
+          f"want [2, 0] got {[d_tier, d_stale]}")
     def _ev(e):
         return netindex.trust(netindex._parse(None, {**v2, "provenance": {
             **v2["provenance"], "evidence": e}}))

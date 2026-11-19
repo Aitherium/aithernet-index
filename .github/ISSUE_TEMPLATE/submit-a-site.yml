@@ -10,11 +10,16 @@ body:
         could verify, and a maintainer reviews it. Own the site? Serve
         `/.well-known/aithernet.json` with `{"records": ["<id>"]}` and the entry is marked
         **owner-proven**.
+
+        **Discord communities:** pick kind `discord`, put the permanent invite in URL, and
+        fill the three Discord fields. The Aither bot is in your server and saw you hold
+        Manage Server, so the entry is marked **owner-proven by the Aither bot** once staff
+        approve it. Add the bot and ask it to list your server; the bot files this for you.
   - type: input
     id: url
     attributes:
       label: URL
-      description: The https:// address.
+      description: The https:// address. For a Discord community, the permanent invite.
       placeholder: https://example.com
     validations:
       required: true
@@ -28,7 +33,7 @@ body:
     id: kind
     attributes:
       label: Kind
-      options: [site, business, garden, room, space, dataset, org, service]
+      options: [site, business, garden, room, space, dataset, org, service, discord]
     validations:
       required: true
   - type: input
@@ -43,6 +48,34 @@ body:
       label: Keyword
       description: Optional .aither keyword, like an old AOL keyword.
       placeholder: my-site.aither
+  - type: markdown
+    attributes:
+      value: |
+        **Discord communities (kind `discord`):** the three fields below are required. The
+        Aither bot fills them when it files the listing; a person submitting by hand must
+        already have had the bot observe Manage Server in that server.
+  - type: input
+    id: discord_guild
+    attributes:
+      label: Discord server id
+      description: The server's id (17-20 digits). Never a member list.
+    validations:
+      required: false
+  - type: input
+    id: discord_manager
+    attributes:
+      label: Requested by
+      description: discord:<the managing user's id>
+      placeholder: discord:123456789012345678
+    validations:
+      required: false
+  - type: input
+    id: discord_band
+    attributes:
+      label: Member band
+      description: One of 1-99, 100-499, 500-999, 1k-4.9k, 5k-9.9k, 10k-49k, 50k+ (optional).
+    validations:
+      required: false
   - type: markdown
     attributes:
       value: |

@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- New kind `discord` for a Discord community: a permanent invite (`url`), the server id
+  and an optional member band in `listing`; topic tags at the top level. Rule NI011
+  refuses anything that is not a `discord.gg` / `discord.com/invite` invite, a server id
+  that is not a snowflake, or a listing that carries more than the guild and the band
+  (no member lists, no personal data).
+- New provenance method `discord-bot`, ranked with `owner-proven`: the Aither bot is IN
+  the server and observed the requester hold Manage Server when they asked. Rule NI012
+  refuses the stamp unless it is exactly `{at, by, method, guild, requested_by}`, the
+  guild matches `listing.guild`, and `requested_by` is `discord:<user id>`.
+- `verify.py` re-resolves a Discord invite through `discord.com/api/v10/invites/<code>`
+  (public, no token) and marks the entry `stale` (tier 0) when it stops resolving or
+  names another server. It never manufactures the `discord-bot` stamp.
+- The site shows the badge **owner-proven by the Aither bot** on Discord entries.
+
 ## 0.4.0 - 2026-11-13
 
 - New kind `business` with an optional `listing` block (description, category, address,
