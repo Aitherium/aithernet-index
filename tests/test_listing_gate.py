@@ -152,9 +152,16 @@ class RuleTests(unittest.TestCase):
         self.assertTrue(any(r.status == lg.SKIP for r in results))
 
 
+BOT = "github-actions[bot]"
+HUMAN = "aither-wzns"
+DISCORD_ID = "discord_123456789012345678"
+DISCORD_PATH = f"records/{DISCORD_ID}.json"
+SHA = "a" * 40
+
+
 def _discord_raw(**over):
     """A Discord record whose stamp looks exactly like the intake bot's."""
-    raw = {"id": "discord_123456789012345678", "kind": "discord",
+    raw = {"id": DISCORD_ID, "kind": "discord",
            "url": "https://discord.gg/abcdef",
            "listing": {"guild": "123456789012345678"},
            "provenance": {"added_by": "github:aither-wzns",
@@ -167,65 +174,212 @@ def _discord_raw(**over):
     return raw
 
 
-class ProvenanceTests(unittest.TestCase):
-    """A Discord / bot-stamped record must come from the intake bot's own PR."""
+def _bot_commits(*shas):
+    """The GitHub API's view of commits the intake bot made."""
+    return {sha: {"author": BOT, "committer": BOT} for sha in shas}
 
-    def ctx(self, author):
+
+class ProvenanceTests(unittest.TestCase):
+    """A Discord / bot-stamped record must come from the intake bot's own PR.
+
+    Being the PR author is not enough: a collaborator can push onto the intake
+    branch without changing it. Every commit that touches the record must also
+    be authored AND committed by the bot account, and the PR must carry exactly
+    one record at ``records/<id>.json``.
+    """
+
+    def ctx(self, author, commits="bot", count=1):
         config = lg.rep.load_config(
             Path(__file__).resolve().parents[1] / "tools" / "gate_config.json")
+        if commits == "bot":
+            commits = _bot_commits(SHA)
         return lg.Context(config=config, existing_hosts=[], labels=[], offline=True,
-                          pr_author=author)
+                          pr_author=author, commits=commits,
+                          changed_record_count=count)
 
-    def verdict(self, rec, author):
-        results = lg.judge(rec, self.ctx(author))
+    def verdict(self, rec, author, commits="bot", count=1):
+        results = lg.judge(rec, self.ctx(author, commits, count))
         return lg.overall(results), [r for r in results if r.rule == "provenance"]
 
+    def bot_rec(self, raw=None, base=None, path=DISCORD_PATH, touching=(SHA,)):
+        rec = lg.parse_record(path, raw if raw is not None else _discord_raw(), base)
+        rec.touching = list(touching)
+        return rec
+
+    # ── the PR author ────────────────────────────────────────────────────────
+
     def test_hand_written_pr_adding_a_bot_stamped_discord_record_fails(self):
-        rec = lg.parse_record("records/d.json", _discord_raw())
-        for human in ("aither-wzns", "randomstranger", "aithernet-bot"):
+        rec = self.bot_rec()
+        for human in (HUMAN, "randomstranger", "aithernet-bot"):
             verdict, proof = self.verdict(rec, human)
             self.assertEqual(verdict, lg.FAIL, human)
             self.assertEqual(proof[0].status, lg.FAIL)
             self.assertIn(human, proof[0].reason)
 
     def test_intake_bot_pr_adding_a_discord_record_passes(self):
-        rec = lg.parse_record("records/d.json", _discord_raw())
-        verdict, proof = self.verdict(rec, "github-actions[bot]")
+        verdict, proof = self.verdict(self.bot_rec(), BOT)
         self.assertEqual(verdict, lg.PASS)
         self.assertEqual(proof[0].status, lg.PASS)
 
     def test_unknown_author_fails_closed(self):
-        rec = lg.parse_record("records/d.json", _discord_raw())
-        verdict, proof = self.verdict(rec, "")
+        verdict, proof = self.verdict(self.bot_rec(), "")
         self.assertEqual(verdict, lg.FAIL)
         self.assertIn("unknown author", proof[0].reason)
 
     def test_bot_stamp_on_a_site_record_needs_the_bot(self):
         raw = {"id": "r1", "kind": "site", "url": "https://example.com/",
                "provenance": {"validated": {"method": "discord-bot"}}}
-        verdict, proof = self.verdict(lg.parse_record("records/r1.json", raw), "someone")
+        verdict, proof = self.verdict(
+            self.bot_rec(raw=raw, path="records/r1.json"), "someone")
         self.assertEqual(verdict, lg.FAIL)
         self.assertEqual(proof[0].status, lg.FAIL)
+
+    # ── Bypass: a collaborator pushes onto an intake branch ──────────────────
+
+    def test_collaborator_push_onto_an_intake_branch_fails(self):
+        """The PR author stays the bot, but the commit is the human's."""
+        commits = {SHA: {"author": HUMAN, "committer": HUMAN}}
+        verdict, proof = self.verdict(self.bot_rec(), BOT, commits=commits)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("not the bot account", proof[0].reason)
+        self.assertIn(SHA[:10], proof[0].reason)
+
+    def test_bot_authored_but_human_committed_fails(self):
+        commits = {SHA: {"author": BOT, "committer": HUMAN}}
+        verdict, proof = self.verdict(self.bot_rec(), BOT, commits=commits)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("committed by", proof[0].reason)
+
+    def test_human_authored_but_bot_committed_fails(self):
+        commits = {SHA: {"author": HUMAN, "committer": BOT}}
+        verdict, proof = self.verdict(self.bot_rec(), BOT, commits=commits)
+        self.assertEqual(verdict, lg.FAIL)
+
+    def test_missing_commit_identities_fail_closed(self):
+        verdict, proof = self.verdict(self.bot_rec(), BOT, commits=None)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("not supplied", proof[0].reason)
+
+    def test_commit_not_in_the_api_list_fails(self):
+        verdict, proof = self.verdict(self.bot_rec(), BOT, commits={})
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("not in this PR's commit list", proof[0].reason)
+
+    def test_record_with_no_touching_commit_fails(self):
+        verdict, proof = self.verdict(self.bot_rec(touching=()), BOT)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("no commit", proof[0].reason)
+
+    def test_commits_touching_ignores_merges(self):
+        import shutil
+        import subprocess
+        import tempfile
+
+        if not shutil.which("git"):
+            self.skipTest("git not on PATH")
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+
+        def run(*args):
+            return subprocess.run(["git", "-C", tmp, *args], check=True,
+                                  capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace").stdout
+
+        run("init", "-q")
+        run("config", "user.email", "t@example.invalid")
+        run("config", "user.name", "t")
+        Path(tmp, "records").mkdir()
+        Path(tmp, "records", "x.json").write_text("{}", encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "base")
+        bot_sha = run("rev-parse", "HEAD").strip()
+        run("checkout", "-q", "-b", "side")
+        Path(tmp, "side.txt").write_text("y", encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "side")
+        run("checkout", "-q", "-")
+        Path(tmp, "main.txt").write_text("z", encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "main")
+        run("merge", "--no-ff", "-m", "merge side", "side")
+        merge_sha = run("rev-parse", "HEAD").strip()
+        self.assertNotEqual(bot_sha, merge_sha)
+        # Neither the side/main commits nor the merge change records/x.json, so
+        # the merge must not be reported as one of the record's commits.
+        touching = lg.commits_touching(tmp, bot_sha, "HEAD", ["records/x.json"])
+        self.assertEqual(touching, [])
+        self.assertNotIn(merge_sha, touching)
+
+    # ── one record, at records/<id>.json ─────────────────────────────────────
+
+    def test_intake_pr_with_more_than_one_record_fails(self):
+        verdict, proof = self.verdict(self.bot_rec(), BOT, count=2)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("exactly one record", proof[0].reason)
+
+    def test_changed_record_count_counts_deletions(self):
+        """Smuggling a deletion into an intake PR is two changes, not one."""
+        import shutil
+        import subprocess
+        import tempfile
+
+        if not shutil.which("git"):
+            self.skipTest("git not on PATH")
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+
+        def run(*args):
+            subprocess.run(["git", "-C", tmp, *args], check=True, capture_output=True)
+
+        run("init", "-q")
+        run("config", "user.email", "t@example.invalid")
+        run("config", "user.name", "t")
+        (Path(tmp) / "records").mkdir()
+        (Path(tmp) / "records" / "other.json").write_text("{}", encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "base")
+        (Path(tmp) / "records" / "other.json").unlink()
+        (Path(tmp) / "records" / f"{DISCORD_ID}.json").write_text(
+            json.dumps(_discord_raw()), encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "head")
+        self.assertEqual(lg.changed_record_count(tmp, "HEAD~1", "HEAD"), 2)
+
+    def test_intake_pr_must_use_the_records_id_path(self):
+        verdict, proof = self.verdict(
+            self.bot_rec(path="records/discord_999.json"), BOT)
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn(f"records/{DISCORD_ID}.json", proof[0].reason)
+
+    # ── editing an existing bot record ───────────────────────────────────────
 
     def test_human_altering_an_existing_discord_stamp_fails(self):
         before = _discord_raw()
         after = _discord_raw()
         after["provenance"]["validated"]["at"] = "2026-12-01"
-        rec = lg.parse_record("records/d.json", after, before)
-        self.assertEqual(self.verdict(rec, "aither-wzns")[0], lg.FAIL)
+        rec = self.bot_rec(raw=after, base=before)
+        self.assertEqual(self.verdict(rec, HUMAN)[0], lg.FAIL)
 
     def test_human_rekinding_a_discord_record_to_site_fails(self):
         before = _discord_raw()
         after = {"id": before["id"], "kind": "site", "url": "https://example.com/"}
-        rec = lg.parse_record("records/d.json", after, before)
-        verdict, proof = self.verdict(rec, "aither-wzns")
+        rec = self.bot_rec(raw=after, base=before)
+        verdict, proof = self.verdict(rec, HUMAN)
         self.assertEqual(verdict, lg.FAIL)
         self.assertIn("changes a record", proof[0].reason)
+
+    def test_bot_editing_an_existing_discord_stamp_passes(self):
+        before = _discord_raw()
+        after = _discord_raw()
+        after["provenance"]["validated"]["at"] = "2026-12-01"
+        verdict, proof = self.verdict(self.bot_rec(raw=after, base=before), BOT)
+        self.assertEqual(verdict, lg.PASS)
+        self.assertEqual(proof[0].status, lg.PASS)
 
     def test_plain_site_record_needs_no_bot(self):
         rec = lg.parse_record("records/r1.json",
                               {"id": "r1", "kind": "site", "url": "https://example.com/"})
-        verdict, proof = self.verdict(rec, "aither-wzns")
+        verdict, proof = self.verdict(rec, HUMAN)
         self.assertEqual(proof, [])
         self.assertEqual(verdict, lg.PASS)
 
@@ -263,26 +417,60 @@ class ProvenanceTests(unittest.TestCase):
         moved = _discord_raw()
         moved["provenance"]["validated"]["requested_by"] = "discord:7"
         target.unlink()
-        (records / "d2.json").write_text(json.dumps(moved), encoding="utf-8")
+        (records / f"{DISCORD_ID}.json").write_text(json.dumps(moved),
+                                                    encoding="utf-8")
         run("add", "-A")
         run("commit", "-q", "-m", "head")
+        head_sha = subprocess.check_output(
+            ["git", "-C", tmp, "rev-parse", "HEAD"], text=True).strip()
         args = SimpleNamespace(root=tmp, records=None, base="base", head="HEAD")
         targets, _hosts = lg.load_targets(args)
         self.assertEqual(len(targets), 1)
         self.assertEqual(targets[0].base_raw, _discord_raw())
-        self.assertEqual(self.verdict(targets[0], "aither-wzns")[0], lg.FAIL)
-        self.assertEqual(self.verdict(targets[0], "github-actions[bot]")[0], lg.PASS)
+        self.assertEqual(targets[0].touching, [head_sha])
+        commits = _bot_commits(head_sha)
+        self.assertEqual(self.verdict(targets[0], HUMAN, commits)[0], lg.FAIL)
+        self.assertEqual(self.verdict(targets[0], BOT, commits)[0], lg.PASS)
 
-    def test_workflow_runs_the_gate_from_the_base_commit_with_the_pr_author(self):
-        wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
-              / "listing-gate.yml").read_text(encoding="utf-8")
-        self.assertIn("github.event.pull_request.user.login", wf)
-        self.assertIn('git worktree add --detach "$RUNNER_TEMP/gate-base" "$BASE_SHA"', wf)
+    # ── Bypass: the PR's own workflow copy ───────────────────────────────────
+
+    def workflow(self):
+        return (Path(__file__).resolve().parents[1] / ".github" / "workflows"
+                / "listing-gate.yml").read_text(encoding="utf-8")
+
+    def test_workflow_runs_on_pull_request_target_not_pull_request(self):
+        import re
+        wf = self.workflow()
+        self.assertIn("pull_request_target:", wf)
+        # A bare `pull_request:` trigger would run the PR's own copy of this file.
+        self.assertIsNone(re.search(r"(?m)^\s*pull_request\s*:\s*$", wf))
+        self.assertIn("github.event_name == 'pull_request_target'", wf)
+
+    def test_workflow_checks_out_only_the_base_commit(self):
+        wf = self.workflow()
+        self.assertIn("ref: ${{ github.event.pull_request.base.sha", wf)
+        # The head is fetched as data and never checked out into the job.
+        self.assertIn('git fetch --no-tags --force origin "pull/${PR}/head', wf)
+        self.assertNotIn("github.event.pull_request.head.sha'", wf)
+        self.assertIn("--commits-json", wf)
+
+    def test_workflow_reads_author_and_commits_from_github(self):
+        wf = self.workflow()
+        self.assertIn("PR_AUTHOR: ${{ github.event.pull_request.user.login }}", wf)
+        self.assertIn("repos/${REPO}/pulls/${PR}/commits", wf)
+        self.assertIn("--pr-author", wf)
+
+    def test_workflow_fails_closed_when_the_base_has_no_gate(self):
+        wf = self.workflow()
+        # No bootstrap that would run the PR's own gate.
+        self.assertNotIn("using the PR's (bootstrap)", wf)
+        self.assertIn("base commit has no listing gate", wf)
         self.assertIn('python "$GATE"', wf)
 
     def test_intake_pr_author_is_the_github_token_identity(self):
         config = self.ctx("").config
-        self.assertEqual(config["intake_pr_authors"], ["github-actions[bot]"])
+        self.assertEqual(config["intake_pr_authors"], [BOT])
+        self.assertEqual(config["bot_commit_logins"], [BOT])
         self.assertIn("discord-bot", config["bot_stamp_methods"])
 
 

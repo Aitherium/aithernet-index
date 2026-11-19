@@ -22,9 +22,13 @@ one verdict per record:
              against every listed host and the protected list in gate_config.json
   provenance a bot-verified record (kind discord/community, or any record that
              carries a bot stamp such as ``discord-bot``) is added or changed
-             only by a pull request the intake bot opened. The stamp is text in
-             a JSON file and anyone can type it; ``pull_request.user.login`` is
-             set by GitHub and a hand-written PR cannot forge it.
+             only by an intake pull request: its ``pull_request.user.login`` is
+             the intake bot, EVERY commit that touches the record is authored
+             AND committed by the bot account, and the PR changes exactly one
+             record at ``records/<id>.json``. The stamp is text in a JSON file
+             and anyone can type it, and a collaborator can push to an intake
+             branch without changing the PR author; the commit identities come
+             from the GitHub API (``--commits-json``), which the PR cannot set.
 
 Every network rule has a pure counterpart in ``reputation.py`` /
 ``artifact_check.py`` and a test with a fixture; tests never touch the network.
@@ -81,6 +85,8 @@ class Record:
     path: str
     raw: dict
     base_raw: "Optional[dict]" = None   # the record at the base ref, if it existed
+    old_path: str = ""                  # the pre-rename path, when the record moved
+    touching: "List[str]" = field(default_factory=list)  # commits that touch it
 
 
 @dataclass
@@ -96,6 +102,10 @@ class Context:
     tls: object = gate_net.tls_check
     feeds: dict = field(default_factory=dict)
     pr_author: str = ""   # pull_request.user.login, set by GitHub (never by the PR)
+    # commit sha -> {"author": login, "committer": login}, from the GitHub API.
+    # None means "not supplied"; a bot-verified record then fails closed.
+    commits: "Optional[Dict[str, dict]]" = None
+    changed_record_count: int = 0   # record files this PR adds/changes/renames
 
     @property
     def age_label_accepted(self) -> bool:
@@ -164,6 +174,64 @@ def changed_record_paths(repo: "Path | str", base: str,
             if new.endswith(".json")]
 
 
+def changed_record_count(repo: "Path | str", base: str, head: str) -> int:
+    """Record files this PR adds, changes, renames or DELETES.
+
+    Deletions are counted: an intake PR carries one record, so smuggling a
+    deletion of another listing into it must fail the one-record rule even
+    though a deleted record has nothing left to judge.
+    """
+    diff = git(repo, "diff", "--name-status", "--find-renames",
+               f"{base}...{head}", "--", "records")
+    return sum(1 for _status, _old, new in parse_name_status_paths(diff)
+               if new.endswith(".json"))
+
+
+def commits_touching(repo: "Path | str", base: str, head: str,
+                     paths: Sequence[str]) -> "List[str]":
+    """SHAs of the commits in ``base..head`` that add or change any of ``paths``.
+
+    Merge commits are skipped: a maintainer's "update branch" merge does not
+    change the record, so it must not be attributed as the record's author.
+    """
+    wanted = [p for p in paths if p]
+    if not wanted:
+        return []
+    try:
+        out = git(repo, "log", "--no-merges", "--format=%H", f"{base}..{head}",
+                  "--", *wanted)
+    except RuntimeError:
+        return []
+    return [line.strip().lower() for line in out.splitlines() if line.strip()]
+
+
+def load_commits(path: "Optional[str | Path]") -> "Optional[Dict[str, dict]]":
+    """``gh api repos/{repo}/pulls/{n}/commits`` -> {sha: {author, committer}}.
+
+    The identities are the GitHub logins from the API's ``author``/``committer``
+    user objects -- GitHub's own commit-to-account mapping, not a string in the
+    commit that a pusher can type. ``gh api --paginate --slurp`` yields an array
+    of pages; a plain array is accepted too.
+    """
+    if not path:
+        return None
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(data, list) and data and isinstance(data[0], list):
+        data = [commit for page in data for commit in page]
+    out: "Dict[str, dict]" = {}
+    for commit in data or []:
+        if not isinstance(commit, dict):
+            continue
+        sha = str(commit.get("sha") or "").lower()
+        if not sha:
+            continue
+        out[sha] = {
+            "author": str((commit.get("author") or {}).get("login") or ""),
+            "committer": str((commit.get("committer") or {}).get("login") or ""),
+        }
+    return out
+
+
 def read_blob(repo: "Path | str", ref: str, path: str) -> dict:
     return json.loads(git(repo, "show", f"{ref}:{path}"))
 
@@ -223,7 +291,12 @@ def load_targets(args) -> "Tuple[List[Record], List[str]]":
             if status == "D":
                 continue
             before = base_blob(root, args.base, old) if status in ("M", "R") else None
-            targets.append(parse_record(path, read_blob(root, args.head, path), before))
+            rec = parse_record(path, read_blob(root, args.head, path), before)
+            if status == "R" and old and old != path:
+                rec.old_path = old
+            rec.touching = commits_touching(root, args.base, args.head,
+                                            [old, path])
+            targets.append(rec)
         existing = records_at_ref(root, args.base)
     existing_hosts = [gate_net.host_of(r.url) for r in existing if r.url]
     return targets, [h for h in existing_hosts if h]
@@ -359,29 +432,92 @@ def bot_provenance_needed(rec: Record, config: dict) -> str:
     return ""
 
 
-def provenance_rule(rec: Record, ctx: Context) -> "Optional[RuleResult]":
-    """FAIL a bot-verified record unless the intake bot opened this PR.
+def _bot_commit_logins(config: dict) -> "List[str]":
+    """The accounts a bot-verified record's commits must belong to."""
+    logins = config.get("bot_commit_logins")
+    if logins is None:
+        logins = config.get("intake_pr_authors", [])
+    return [str(login) for login in logins]
 
-    ``intake_pr_authors`` (gate_config.json) is the login GitHub puts on a pull
-    request that .github/workflows/intake.yml opens with ``github.token``:
-    ``github-actions[bot]``. ``[`` is not allowed in a user name, so no person
-    can hold it. The bot's other names prove nothing here: ``aithernet-bot`` is
-    a git ``user.name`` and a stamp's ``by`` (both typed text), and the account
-    that files the intake issue also opens hand-written PRs. An unknown author
-    fails closed. Returns None for a record that makes no bot claim.
+
+def _commit_failure(rec: Record, ctx: Context, why: str) -> str:
+    """Why the commits touching ``rec`` are not proven to be the bot's, or "".
+
+    The PR author is not enough: a collaborator can push a hand-written commit
+    onto an intake branch ``submit/<n>`` and ``pull_request.user.login`` stays
+    the bot. Each commit that adds or changes the record must be authored AND
+    committed by the bot account (``bot_commit_logins``), with those identities
+    taken from the GitHub API. A missing commit, unknown identity or unknown
+    commit list fails closed.
+    """
+    bot = _bot_commit_logins(ctx.config)
+    if not rec.touching:
+        return (f"{why}; no commit in this PR is attributed to {rec.path}, so the "
+                f"change cannot be proven to be the bot's")
+    if ctx.commits is None:
+        return (f"{why}; this PR's commit identities were not supplied (the "
+                f"workflow reads them from the GitHub API), so the change cannot "
+                f"be proven to be the bot's")
+    for sha in rec.touching:
+        who = ctx.commits.get(str(sha).lower())
+        if not who:
+            return (f"{why}; commit {str(sha)[:10]} is not in this PR's commit list "
+                    f"from the GitHub API, so its identity is unknown")
+        author, committer = who.get("author") or "", who.get("committer") or ""
+        if not bot or author not in bot or committer not in bot:
+            return (f"{why}; commit {str(sha)[:10]} is authored by "
+                    f"{author or 'unknown'!r} and committed by "
+                    f"{committer or 'unknown'!r}, not the bot account {bot}; "
+                    f"pushing to an intake branch does not change the PR author")
+    return ""
+
+
+def provenance_rule(rec: Record, ctx: Context) -> "Optional[RuleResult]":
+    """FAIL a bot-verified record unless the intake bot's own PR carries it.
+
+    Three facts are required, all from GitHub's own records rather than strings
+    the PR can set:
+
+    1. ``intake_pr_authors`` (``github-actions[bot]``): the login GitHub puts on
+       a pull request .github/workflows/intake.yml opens with ``github.token``.
+       ``[`` is not allowed in a user name, so no person can hold it.
+    2. Every commit that touches the record is authored AND committed by
+       ``bot_commit_logins`` (``--commits-json`` from the GitHub API). A
+       collaborator can push onto an intake branch and the PR author does not
+       change; this is what catches that.
+    3. The PR changes exactly one record, at ``records/<id>.json`` -- an intake
+       PR is one record, and a record cannot hide behind other changes.
+
+    The bot's other names prove nothing on their own: ``aithernet-bot`` is a git
+    ``user.name`` and a stamp's ``by`` (both typed text). An unknown author or a
+    missing commit list fails closed. Returns None for a record making no bot
+    claim.
     """
     why = bot_provenance_needed(rec, ctx.config)
     if not why:
         return None
     allowed = [str(a) for a in ctx.config.get("intake_pr_authors", [])]
     author = (ctx.pr_author or "").strip()
-    if author and author in allowed:
-        return RuleResult(rec.id, "provenance", PASS,
-                          f"{why}; opened by the intake bot ({author})")
-    who = f"authored by {author!r}" if author else "of unknown author (fails closed)"
-    return RuleResult(rec.id, "provenance", FAIL,
-                      f"{why}, but this PR is {who}, not the intake bot {allowed}; "
-                      f"a hand-written PR cannot add or alter the bot's proof")
+    if not (author and author in allowed):
+        who = f"authored by {author!r}" if author else "of unknown author (fails closed)"
+        return RuleResult(rec.id, "provenance", FAIL,
+                          f"{why}, but this PR is {who}, not the intake bot {allowed}; "
+                          f"a hand-written PR cannot add or alter the bot's proof")
+    if ctx.changed_record_count != 1:
+        return RuleResult(rec.id, "provenance", FAIL,
+                          f"{why}; an intake PR must change exactly one record, but "
+                          f"this PR changes {ctx.changed_record_count}")
+    expected = f"records/{rec.id}.json"
+    if rec.id and rec.path != expected:
+        return RuleResult(rec.id, "provenance", FAIL,
+                          f"{why}; an intake PR must carry the record at {expected}, "
+                          f"not {rec.path}")
+    commit_problem = _commit_failure(rec, ctx, why)
+    if commit_problem:
+        return RuleResult(rec.id, "provenance", FAIL, commit_problem)
+    return RuleResult(rec.id, "provenance", PASS,
+                      f"{why}; opened by the intake bot ({author}) and every commit "
+                      f"that touches it is authored and committed by it")
 
 
 # ── reputation ───────────────────────────────────────────────────────────────
@@ -506,7 +642,9 @@ _FIX = {
     "urlhaus": "URLhaus lists the host; remove the listing",
     "lookalike": "the host imitates a listed or protected domain; use the real domain",
     "provenance": "a Discord/bot-verified listing is filed through the intake issue "
-                  "(the Aither bot) and its PR is opened by the intake workflow; a "
+                  "(the Aither bot): its PR must be opened by the intake workflow, "
+                  "every commit touching the record must be authored and committed "
+                  "by the bot, and the PR must change that one record only; a "
                   "hand-written PR may not add or edit it",
 }
 
@@ -589,9 +727,17 @@ def build_context(args, targets: Sequence[Record], existing_hosts: List[str]) ->
             labels = list(json.loads(args.labels_json))
         except ValueError:
             labels = []
+    count = len(targets)
+    if getattr(args, "base", None) and getattr(args, "head", None):
+        try:
+            count = changed_record_count(Path(args.root), args.base, args.head)
+        except RuntimeError:
+            count = len(targets)
     ctx = Context(config=config, existing_hosts=existing_hosts, labels=labels,
                   timeout=float(args.timeout), offline=args.offline,
-                  pr_author=args.pr_author or "")
+                  pr_author=args.pr_author or "",
+                  commits=load_commits(getattr(args, "commits_json", "") or ""),
+                  changed_record_count=count)
     if not args.offline:
         try:
             ctx.feeds = rep.load_feeds()
@@ -609,6 +755,9 @@ def main(argv: "Optional[Sequence[str]]" = None) -> int:
     ap.add_argument("--labels-json", default="", help="JSON array of PR label names")
     ap.add_argument("--pr-author", default=os.environ.get("PR_AUTHOR", ""),
                     help="pull_request.user.login (default: $PR_AUTHOR)")
+    ap.add_argument("--commits-json", default=os.environ.get("COMMITS_JSON", ""),
+                    help="JSON from `gh api repos/{repo}/pulls/{n}/commits` "
+                         "(default: $COMMITS_JSON); commit identities for provenance")
     ap.add_argument("--config", default=str(DEFAULT_CONFIG))
     ap.add_argument("--timeout", type=float, default=15)
     ap.add_argument("--offline", action="store_true", help="skip every network rule")

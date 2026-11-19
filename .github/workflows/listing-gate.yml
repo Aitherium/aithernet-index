@@ -7,13 +7,26 @@ name: listing-gate
 # fleet and posts its own commit status `aithernet/reputation`, which branch
 # protection also requires.
 #
+# WHY `pull_request_target`, NOT `pull_request`. On `pull_request`, the workflow
+# file that runs is the PR's OWN copy. A hand-written PR could edit this file --
+# point PR_AUTHOR at the intake bot, drop the base checkout, or skip the gate
+# entirely -- and the check would go green. `pull_request_target` runs the
+# workflow, the gate code and gate_config.json from the BASE ref; the PR cannot
+# change any of the code that judges it. This workflow only ever checks the PR
+# out as DATA (`git fetch` + `git show`): no PR file is executed. PR author and
+# commit identities come from the GitHub event / API, never from anything the
+# PR sets.
+#
 # WHY NO `paths:` FILTER. This check is REQUIRED on main, so it has to report on
 # every pull request. A path-filtered workflow creates no check run at all when
 # the paths do not match, and GitHub then shows the required check as
 # "Expected" forever -- blocking README PRs. The gate itself is cheap and exits
 # 0 when the PR adds or changes no record ("nothing to judge").
+#
+# ENFORCEMENT: this check only blocks merges when `listing-gate` is required in
+# branch protection (this workflow does NOT change repo settings).
 on:
-  pull_request:
+  pull_request_target:
   workflow_dispatch:
 
 permissions:
@@ -30,44 +43,71 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      # Only the base ref is checked out. Its tree holds the gate code, the
+      # policy and the tests; nothing from the PR is ever on disk.
+      - name: check out the base commit (the gate code)
+        uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: unit tests (no network)
+      - name: require the gate in the base commit (fail closed, never run PR code)
+        if: github.event_name == 'pull_request_target'
+        run: |
+          if [ -f tools/listing_gate.py ] && [ -f tools/gate_config.json ]; then
+            echo "GATE=tools/listing_gate.py" >> "$GITHUB_ENV"
+          else
+            echo "::error::the base commit has no listing gate; cannot judge this PR without executing the PR's own code"
+            exit 1
+          fi
+
+      # The base commit's own tests, not the PR's. Running the PR's tests would
+      # mean executing PR code in a job that holds a write token.
+      - name: unit tests (base copy, no network)
         run: python -m unittest discover -s tests -v
 
-      # The gate's code and policy come from the BASE commit, not from the PR.
-      # A pull_request run checks out the PR's own tree, so a PR could otherwise
-      # rewrite tools/gate_config.json (e.g. add its author to intake_pr_authors)
-      # or the rule itself and pass its own gate. Records are still read from
-      # the PR head by git. Bootstrap only: a base with no gate uses the PR's.
-      - name: check out the gate from the base commit
-        if: github.event_name == 'pull_request'
+      # Fetch the PR head into its own ref and keep it as data: the gate reads
+      # blobs with `git show <head>:records/...`. The head is never checked out,
+      # so no file from the PR is ever imported, executed or on the PATH.
+      - name: fetch the PR head as data (never checked out)
+        id: head
+        if: github.event_name == 'pull_request_target'
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          if git cat-file -e "${BASE_SHA}:tools/listing_gate.py" 2>/dev/null; then
-            git worktree add --detach "$RUNNER_TEMP/gate-base" "$BASE_SHA"
-            echo "GATE=$RUNNER_TEMP/gate-base/tools/listing_gate.py" >> "$GITHUB_ENV"
-          else
-            echo "::warning::base has no listing gate yet; using the PR's (bootstrap)"
-            echo "GATE=tools/listing_gate.py" >> "$GITHUB_ENV"
-          fi
+          git fetch --no-tags --force origin "pull/${PR}/head:refs/remotes/pr-head"
+          sha=$(git rev-parse refs/remotes/pr-head)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # Author and commit identities are read from the GitHub API, not from the
+      # git objects or any env the PR can influence: a collaborator can push to
+      # an intake branch (the PR author stays the bot) and can type any author
+      # name, but the API's commit->account mapping is GitHub's own record.
+      - name: read the PR author and commits from the GitHub API
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          COMMITS_JSON: ${{ runner.temp }}/listing-gate-commits.json
+        run: |
+          gh api --paginate --slurp "repos/${REPO}/pulls/${PR}/commits?per_page=100" \
+            > "$COMMITS_JSON"
 
       - name: judge changed records
         id: gate
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          # Set by GitHub; a Discord / bot-stamped record needs the intake bot here.
+          # Set by GitHub from the event payload, on the base workflow's terms.
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          COMMITS_JSON: ${{ runner.temp }}/listing-gate-commits.json
           SUMMARY: ${{ runner.temp }}/listing-gate-summary.md
           VERDICTS: ${{ runner.temp }}/listing-gate.json
         run: |
@@ -77,6 +117,8 @@ jobs:
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
             --labels-json "$PR_LABELS" \
+            --pr-author "$PR_AUTHOR" \
+            --commits-json "$COMMITS_JSON" \
             --summary "$SUMMARY" \
             --json "$VERDICTS"
           code=$?
@@ -85,7 +127,7 @@ jobs:
           exit "$code"
 
       - name: update the sticky pull request comment
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request_target'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
