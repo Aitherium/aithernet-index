@@ -40,6 +40,50 @@ Open an issue with **Submit a site**. A bot turns it into a pull request, checks
 the URL answers, and a maintainer reviews it. You can also open the PR yourself. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+A listing must carry **one** backlink artifact, and the site is re-checked every day:
+
+**(a) owner proof** (keeps the `owner-proven` tier) — serve
+`https://<your-host>/.well-known/aithernet.json`:
+
+```json
+{"records": ["<id>"]}
+```
+
+**(b) a link back from the listed page** (stays listed, not owner-proven) — any one of:
+
+```html
+<link rel="aithernet" href="https://index.aitherium.com/r/<id>">
+<meta name="aithernet" content="<id>">
+<a href="https://index.aitherium.com/r/<id>">Listed in the AitherNet Index</a>
+```
+
+`https://index.aitherium.com/r/<id>` is the stable shortlink for an entry, so you add it
+once. A look-alike domain or a different id does not count, and a link hidden by CSS
+(`display:none`, off-screen, zero-size, a hiding class) does not count either.
+
+## Kept honest: the daily re-check
+
+`recheck.py` runs every day (`recheck.yml`). It re-fetches every listed page as a
+browser and as the checker, requires the artifact above — a new listing is not approved
+without it; the grace period covers only entries listed before 2026-11-18 — and compares
+each page with the fingerprint recorded when it was approved (the main visible text,
+plus the final host after redirects). A site that stops answering, drops its backlink,
+redirects to another host (server-side *or* a meta/JS redirect), serves the checker a
+different page, or has its text substantially replaced (token similarity < 0.65) moves
+`active → warn → suspended → delisted`; a clean week brings it back to `active`.
+
+Failures are counted over a rolling week, so a site that flaps (down two days in three)
+is suspended rather than kept in `warn` forever, and `warn` is hidden from the listing
+like `suspended`/`delisted`.
+
+Delisted does not mean deleted: the entry is hidden from the listing, `index.json` says
+`status: delisted`, and its page stays up with the reason. State lives in
+`state/health.json`, never in `records/`; deleting a record's JSON is enough to delist it
+and the next run prunes its state. See [REPUTATION.md](REPUTATION.md).
+
+The site shows each entry's status, last-checked date and artifact kind, and hides
+warn/suspended/delisted entries from the main listing.
+
 ## List or claim a business
 
 A business lists itself with the same form (kind `business`) and claims the entry by
