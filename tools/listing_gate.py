@@ -102,6 +102,20 @@ def parse_record(path: str, raw: dict) -> Record:
                   url=str(raw.get("url") or ""), path=path, raw=raw)
 
 
+def url_exempt(rec: Record, config: dict) -> bool:
+    """True for a url-less record of a kind that has no page to judge.
+
+    ``no_url_exempt_kinds`` in ``gate_config.json`` lists the kinds whose entry
+    is a route/namespace (``gate``, ``world``) or a bot-verified invite
+    (``discord``, ``community``). Those exist legitimately without a url, so the
+    four url rules SKIP them and print the reason instead of failing a PR that
+    merely touches an existing such listing. A url-less record of ANY OTHER kind
+    still fails every url rule -- the exemption is the config list, not the
+    absence of a url.
+    """
+    return not rec.url and rec.kind in set(config.get("no_url_exempt_kinds", []))
+
+
 def parse_name_status(text: str) -> "List[Tuple[str, str]]":
     """``git diff --name-status`` output -> [(status letter, new path)]."""
     out: "List[Tuple[str, str]]" = []
@@ -230,6 +244,10 @@ def inspect_health(url: str, page: gate_net.Fetch, tls: gate_net.TLSResult,
 
 
 def health_rule(rec: Record, ctx: Context) -> RuleResult:
+    if url_exempt(rec, ctx.config):
+        return RuleResult(rec.id, "health", SKIP,
+                          f"kind {rec.kind!r} has no page to health-check "
+                          f"(no_url_exempt_kinds)")
     if not rec.url:
         return RuleResult(rec.id, "health", FAIL,
                           "record has no url; artifact and health cannot be judged")
@@ -249,6 +267,10 @@ def artifact_rule(rec: Record, ctx: Context) -> RuleResult:
     if rec.kind in ctx.config.get("discord_exempt_kinds", []):
         return RuleResult(rec.id, "artifact", PASS,
                           f"kind {rec.kind!r} is checked by its own bot")
+    if url_exempt(rec, ctx.config):
+        return RuleResult(rec.id, "artifact", SKIP,
+                          f"kind {rec.kind!r} has no page to carry a backlink "
+                          f"(no_url_exempt_kinds)")
     if not rec.url:
         return RuleResult(rec.id, "artifact", FAIL, "record has no url to look at")
     if ctx.offline:
@@ -265,6 +287,10 @@ def artifact_rule(rec: Record, ctx: Context) -> RuleResult:
 # ── reputation ───────────────────────────────────────────────────────────────
 
 def reputation_rules(rec: Record, ctx: Context) -> "List[RuleResult]":
+    if url_exempt(rec, ctx.config):
+        return [RuleResult(rec.id, "reputation", SKIP,
+                           f"kind {rec.kind!r} has no host to look up "
+                           f"(no_url_exempt_kinds)")]
     host = gate_net.host_of(rec.url)
     if not host:
         return [RuleResult(rec.id, "reputation", FAIL, "record has no host to look up")]
@@ -297,6 +323,10 @@ def reputation_rules(rec: Record, ctx: Context) -> "List[RuleResult]":
 
 
 def lookalike_rule(rec: Record, ctx: Context) -> RuleResult:
+    if url_exempt(rec, ctx.config):
+        return RuleResult(rec.id, "lookalike", SKIP,
+                          f"kind {rec.kind!r} has no host to compare "
+                          f"(no_url_exempt_kinds)")
     host = gate_net.host_of(rec.url)
     if not host:
         return RuleResult(rec.id, "lookalike", FAIL, "record has no host to compare")

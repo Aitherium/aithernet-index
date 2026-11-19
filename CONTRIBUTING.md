@@ -16,7 +16,10 @@ accounts are reviewed by hand.
 
 1. Copy a file in `records/` to `records/<id>.json`, where the file name equals the `id`.
 2. Fill in `kind`, `title`, an https `url`, `tags`, and optionally `names` (`*.aither`)
-   with a `route`, plus `edges`.
+   with a `route`, plus `edges`. The `url` is required for page kinds (`garden`,
+   `site`, `world` with a site, `org`, `business`, ...). Kinds that have no page of
+   their own (`gate`, `discord`, `community`, and route-only `world` entries) may
+   omit it; the gate reports their network rules as *not judged* instead of failing.
 3. Run `python check.py` (it must report 0 findings) and `python verify.py --ids <id> --stamp`.
 4. Open the PR.
 
@@ -139,6 +142,15 @@ parked. Fix the site; a redirect to another host is not the listing.
 **Failure means:** the domain is on a block/phishing list or too new. Remove it,
 or (for a new-but-legitimate domain) ask a maintainer for the label.
 
+### Not judged: url-less kinds
+
+The rules above need a `url`. A record of a kind listed in
+`no_url_exempt_kinds` (`gate`, `discord`, `community`, route-only `world`) may have
+none; the artifact, health, reputation and look-alike rules then report
+**SKIP — not judged** and the record passes on the rules that *can* judge it
+(schema and provenance). A url-less record of any other kind still fails: that is
+usually a broken submission, not a route entry.
+
 ### 4. Poisoned / look-alike names
 
 The host must not be a typosquat (edit distance <= 2 on the registrable label,
@@ -157,6 +169,20 @@ not relabelled.
   per push).
 - Locally: `python tools/listing_gate.py ...` prints one line per rule, per
   record, and exits non-zero on any failure.
+
+### Branch protection (applied by a maintainer, not by CI)
+
+`tools/branch_protection.json` is the exact body for
+
+```
+PUT /repos/Aitherium/aithernet-index/branches/main/protection
+```
+
+It requires `listing-gate` **and** `aithernet/reputation` on every head. Both
+checks run on every pull request (not path-filtered), so neither can sit at
+"Expected" on a PR that changes no record. A maintainer applies it by hand after
+both PRs are merged and one pull request has shown both checks green; **no
+workflow applies it**, and it is not applied as part of these PRs.
 
 Rules live in `tools/listing_gate.py`, `tools/reputation.py` and
 `tools/artifact_check.py`; policy (age limit, label name, protected domains,

@@ -106,6 +106,39 @@ class RuleTests(unittest.TestCase):
     def test_health_without_url_fails(self):
         self.assertEqual(lg.health_rule(self.record(url=""), self.ctx()).status, lg.FAIL)
 
+    def test_url_less_exempt_kind_is_skipped_not_failed(self):
+        config = {"no_url_exempt_kinds": ["gate", "world"],
+                  "discord_exempt_kinds": []}
+        ctx = self.ctx(config=config)
+        rec = self.record(kind="gate", url="")
+        for rule in (lg.artifact_rule(rec, ctx), lg.health_rule(rec, ctx),
+                     lg.lookalike_rule(rec, ctx)):
+            self.assertEqual(rule.status, lg.SKIP, rule)
+            self.assertIn("no_url_exempt_kinds", rule.reason)
+        self.assertEqual(lg.reputation_rules(rec, ctx)[0].status, lg.SKIP)
+        # A skipped rule is reported, not a pass, and never a failure.
+        self.assertEqual(lg.overall([lg.artifact_rule(rec, ctx),
+                                     lg.health_rule(rec, ctx)]), lg.PASS)
+
+    def test_url_less_kind_not_in_the_exempt_list_still_fails(self):
+        config = {"no_url_exempt_kinds": ["gate"], "discord_exempt_kinds": []}
+        ctx = self.ctx(config=config)
+        rec = self.record(kind="site", url="")
+        self.assertEqual(lg.artifact_rule(rec, ctx).status, lg.FAIL)
+        self.assertEqual(lg.health_rule(rec, ctx).status, lg.FAIL)
+        self.assertEqual(lg.reputation_rules(rec, ctx)[0].status, lg.FAIL)
+        self.assertEqual(lg.lookalike_rule(rec, ctx).status, lg.FAIL)
+
+    def test_real_config_exempts_the_url_less_records_on_main(self):
+        config = lg.rep.load_config(
+            Path(__file__).resolve().parents[1] / "tools" / "gate_config.json")
+        # records/gate_shadowbroker_infonet.json (kind gate) and both url-less
+        # world records on main must not fail the gate merely for having no url.
+        for kind in ("gate", "world"):
+            self.assertTrue(lg.url_exempt(self.record(kind=kind, url=""), config),
+                            kind)
+        self.assertFalse(lg.url_exempt(self.record(kind="site", url=""), config))
+
     def test_lookalike_rule_fails_on_brand_typosquat(self):
         ctx = self.ctx(config=lg.rep.load_config(
             Path(__file__).resolve().parents[1] / "tools" / "gate_config.json"))

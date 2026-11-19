@@ -70,6 +70,7 @@
     "parked free, courtesy of"
   ],
   "discord_exempt_kinds": ["discord", "community"],
-  "no_url_exempt_kinds": ["discord", "community"],
+  "_no_url_exempt_comment": "Kinds whose entry legitimately has no page: gate/world are route/namespace entries, discord/community are bot-verified invites. A url-less record of any other kind fails the url rules.",
+  "no_url_exempt_kinds": ["discord", "community", "gate", "world"],
   "comment_marker": "<!-- listing-gate:start -->"
 }
