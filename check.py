@@ -2,7 +2,9 @@
 """Validate the git-tracked AitherNet Index (records/).
 
 Exit 0 clean, 1 violation, 2 could not judge (no records found / unreadable root).
-Rules NI000-NI010 live in ``netindex.py::validate``.
+Record rules NI000-NI010 live in ``netindex.py::validate``; NI011 (the re-check's
+``state/health.json``) lives in ``recheck.py::state_findings`` and is checked here so
+there is one validator, never two.
 
     python check.py
     python check.py --resolve docs.aither
@@ -21,9 +23,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import netindex  # noqa: E402
+import recheck  # noqa: E402
 
 
-def _run(root: Path) -> int:
+def _run(root: Path, state_path: "Path | None" = None) -> int:
     if not root.is_dir():
         print(f"could not judge: {root} is not a directory")
         return 2
@@ -32,6 +35,8 @@ def _run(root: Path) -> int:
         print(f"could not judge: no records under {root}")
         return 2
     findings += netindex.validate(records)
+    if state_path is not None and Path(state_path).exists():
+        findings += recheck.state_findings(recheck.load_state(state_path), records)
     for f in findings:
         print(f)
     names = sum(len(r.names) for r in records)
@@ -100,12 +105,24 @@ def _self_test() -> int:
     with tempfile.TemporaryDirectory() as d:
         empty_ok = _run(Path(d)) == 2
     print(f"{'PASS' if empty_ok else 'FAIL'} empty root exits 2")
-    return 0 if ok and r_ok and empty_ok else 1
+    # NI011: the re-check state is machine-written, but a bad commit is still a finding.
+    rec = netindex._parse(None, good)
+    clean_state = {"version": 1, "grace_starts": "2026-11-18", "grace_days": 30,
+                   "entries": {"a": {"status": "warn"}}}
+    bad_state = {"version": 1, "grace_starts": "2026-11-18", "grace_days": 30,
+                 "entries": {"a": {"status": "exploded"}, "ghost": {"status": "active"}}}
+    s_ok = (recheck.state_findings(clean_state, [rec]) == []
+            and {f.code for f in recheck.state_findings(bad_state, [rec])} == {"NI011"}
+            and len(recheck.state_findings(bad_state, [rec])) == 2)
+    ok &= s_ok
+    print(f"{'PASS' if s_ok else 'FAIL'} NI011 state/health.json")
+    return 0 if ok and r_ok and empty_ok and s_ok else 1
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root", type=Path, default=netindex.DEFAULT_ROOT)
+    ap.add_argument("--state", type=Path, default=recheck.DEFAULT_STATE)
     ap.add_argument("--resolve", metavar="NAME")
     ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args()
@@ -115,7 +132,10 @@ def main() -> int:
         hit = netindex.Index.from_root(a.root).resolve(a.resolve)
         print(json.dumps(hit, indent=2) if hit else f"NXDOMAIN {a.resolve}")
         return 0 if hit else 1
-    return _run(a.root)
+    # State describes THIS checkout's records, so it is only judged when we are
+    # checking the repo's own records/ directory (or one named explicitly with --root).
+    state = a.state if (a.state.exists() and a.root == netindex.DEFAULT_ROOT) else None
+    return _run(a.root, state)
 
 
 if __name__ == "__main__":

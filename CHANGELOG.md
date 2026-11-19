@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 - 2026-11-18
+
+- **A listing must carry a backlink artifact.** One of: the `/.well-known/aithernet.json`
+  owner proof, a `<link rel="aithernet">`, a `<meta name="aithernet">`, or a visible link
+  to `https://index.aitherium.com/r/<id>`. Matched against the exact host and id, so
+  look-alikes do not count (`artifact.py`).
+- **Content fingerprint** of every listed page (normalised title, meta description, a
+  hash of the visible text, the final host after redirects), compared on re-check with
+  token-set Jaccard similarity (`fingerprint.py`). A changed final host or similarity
+  below 0.5 flags the entry.
+- **Daily re-check** with a state machine in `state/health.json`:
+  `active -> warn -> suspended -> delisted`, recovering to `active` on a clean check,
+  with a 30-day artifact grace period for entries listed before this release
+  (`recheck.py`, `.github/workflows/recheck.yml`). One GitHub issue per entry that
+  needs a human, closed automatically on recovery. It never edits `records/`.
+- **The site tells the truth about it**: status, last-checked date and artifact kind per
+  entry in `index.json`; suspended/delisted entries hidden from the listing and sitemap
+  but still reachable at `/e/<id>/` with the reason; `/r/<id>/` stable shortlinks.
+- New rule **NI011** validates `state/health.json` in `check.py`.
+- `verify.py --stamp` also records `provenance.fingerprint` at listing time.
+
 ## 0.4.0 - 2026-11-13
 
 - New kind `business` with an optional `listing` block (description, category, address,

@@ -17,6 +17,58 @@ next to every entry.
 | 2 | owner-proven | the site serves `/.well-known/aithernet.json` naming the record | control of the domain |
 | 3 | vouched | tier 1+ AND two distinct people, other than the submitter, vouched | two real, aged accounts that are willing to sign |
 
+## The required backlink, and what each form proves
+
+A listing must carry **one** artifact that links it back to the index
+(`artifact.py`, enforced by the daily `recheck.py`). The two useful forms prove
+different things, so they earn different rank:
+
+| artifact | what it proves | rank it can reach |
+|---|---|---|
+| `https://<host>/.well-known/aithernet.json` naming the id | control of the **domain** | owner-proven (tier 2) |
+| `<link rel="aithernet">` / `<meta name="aithernet">` / a visible link to `https://index.aitherium.com/r/<id>` | that the **page** points at its entry | reachable (tier 1) at most |
+
+A link-back is trivially copyable, so it never confers owner-proven: `trust()` only
+grants that tier for the well-known method (`owner-asserted` stays an internal
+exception). A link-back still matters, because it is the thing the daily check can
+see: if the page is swapped, the new page almost never carries it.
+
+Both forms are matched against the exact host `index.aitherium.com`, an `https`
+scheme, and the exact record id. A link to another domain, a look-alike host
+(`index.aitherium.com.evil.example`), a different entry, or an anchor with no visible
+text does not count — the checker is written to fail closed.
+
+## Keeping the approval honest: the daily re-check
+
+An approval is about a page at a moment. `recheck.py` (run daily by
+`.github/workflows/recheck.yml`) revisits every entry and fails it when:
+
+- the URL no longer answers;
+- the required artifact is gone (after a 30-day grace period, `grace_starts`
+  2026-11-18, for entries listed before this shipped);
+- the page now redirects to a different final host (domain sold, parked, redirected);
+- the visible text changed enough that token-set Jaccard similarity to the approved
+  page is below 0.5.
+
+Failure moves an entry through a state machine kept in `state/health.json` — **not**
+in the records, so a record stays exactly what a human last reviewed:
+
+```
+active --(first failure)--> warn
+warn --(3 consecutive days, or the final host changed)--> suspended
+suspended --(14 days)--> delisted
+any status --(a clean check)--> active
+```
+
+Delisted never means deleted. `build_site.py` hides the entry from the listing,
+`index.json` carries `status: delisted`, and the entry page stays up with the reason.
+One GitHub issue per entry (label `recheck`) opens on suspend or a needs-review
+change and closes itself when the entry recovers. A maintainer who accepts a genuine
+rebuild re-seeds the fingerprint with `python recheck.py --accept <id>`.
+
+Discord-kind records (and any future `discord`/`community` kind) are exempt: the bot
+re-verifies their invite instead, and this checker skips them.
+
 ## What is enforced today
 
 - **NI009**: vouches need `by` and `at`. A submitter cannot vouch for their own entry,
@@ -29,6 +81,10 @@ next to every entry.
   the check first.
 - **Owner proof beats impersonation.** A look-alike site cannot serve the real
   domain's `.well-known` file.
+- **NI011**: `state/health.json` is machine-written, but `check.py` still validates it
+  (known ids only, known statuses, well-formed counts) so a bad commit is caught.
+- **The re-check writes only `state/health.json`.** It never edits `records/`, and the
+  workflow fails if that changes.
 
 ## What comes next
 
@@ -37,9 +93,10 @@ next to every entry.
    up, and how old the account is. Trust then flows from a small seed set of known
    maintainers, EigenTrust-style, so a Sybil cluster with no path to the seeds scores
    zero however large it grows.
-2. **Decay.** `verify.py --stamp` runs on a schedule. An entry that stops answering
-   drops to tier 0 and shows its last good date. Abandoned or flipped domains lose
-   trust on their own.
+2. **Decay, finished.** The daily re-check now covers the first half: an entry that
+   stops answering, loses its backlink or changes hands is warned, suspended and
+   delisted on its own (see above). Still open: lowering the *computed trust tier*
+   itself on decay, and showing the last good date next to the tier.
 3. **Flags.** A `report` issue form (scam, impersonation, AI-generated fake reviews,
    dead) is reviewed in the open. A confirmed report removes the entry and costs its
    vouchers weight.

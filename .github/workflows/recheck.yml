@@ -1,0 +1,93 @@
+name: recheck
+
+# The thing that keeps an approval honest: every day, re-visit every listed site,
+# require its backlink artifact, compare its fingerprint with what was approved, and
+# move the entry through active -> warn -> suspended -> delisted (recheck.py).
+#
+# Writes exactly one file, state/health.json, back to main with the default
+# GITHUB_TOKEN. It never edits records/ and never deletes anything: delisted means
+# build_site.py hides the entry, index.json says status: delisted, the record page
+# stays up with the reason. Uses no secrets beyond github.token.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"        # daily, 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write                # commit state/health.json
+  issues: write                  # one issue per entry that needs a human
+
+concurrency:
+  group: recheck
+  cancel-in-progress: false
+
+jobs:
+  recheck:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: test the checker before trusting it
+        run: |
+          python -m unittest discover -s tests -v
+          python artifact.py --self-test
+          python fingerprint.py
+          python recheck.py --self-test
+
+      - name: re-check every record
+        run: |
+          python recheck.py --root records --state state/health.json \
+            --json-out "$RUNNER_TEMP/run.json" | tee "$RUNNER_TEMP/table.txt"
+
+      - name: the re-check must not touch records/
+        run: |
+          if [ -n "$(git status --porcelain -- records)" ]; then
+            echo "::error::the re-check modified records/; refusing to continue"
+            git status --short -- records
+            exit 1
+          fi
+
+      - name: commit state/health.json
+        run: |
+          git config user.name "aithernet-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- state/health.json; then
+            echo "state unchanged; nothing to commit"
+            exit 0
+          fi
+          git add state/health.json
+          git commit -m "recheck: daily health update"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: plan issues (one per entry, open on failure, close on recovery)
+        run: |
+          gh issue list --label recheck --state open --limit 500 \
+            --json number,title > "$RUNNER_TEMP/issues.json"
+          python recheck.py --plan-issues "$RUNNER_TEMP/run.json" \
+            "$RUNNER_TEMP/issues.json" > "$RUNNER_TEMP/actions.json"
+          cat "$RUNNER_TEMP/actions.json"
+
+      - name: open, update or close the issues
+        run: |
+          python recheck.py --apply-issues "$RUNNER_TEMP/actions.json" \
+            --state state/health.json
+
+      - name: summary
+        if: always()
+        run: |
+          {
+            echo "## Re-check"
+            echo '```'
+            cat "$RUNNER_TEMP/table.txt" 2>/dev/null || echo "no table produced"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
