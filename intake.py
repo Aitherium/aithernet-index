@@ -6,6 +6,11 @@ argument), every field is length-capped and pattern-checked, and the id is
 derived from the URL, not chosen by the submitter. The record enters at tier 0
 ('submitted'); verify.py then stamps whatever evidence it can actually see.
 
+The one exception is kind ``discord``: its proof (the Aither bot's observation of
+Manage Server) cannot be inferred from form text, so it is minted only for an issue
+authored by an account in ``netindex.DISCORD_BOT_SUBMITTERS`` -- the bot itself.
+Anyone else asking to list a server is refused and told to add the bot.
+
     python intake.py --event "$GITHUB_EVENT_PATH"   # prints the new record id
     python intake.py --self-test
 """
@@ -51,6 +56,15 @@ def record_from(form: dict, login: str, today: dt.date) -> dict:
     if kind not in FORM_KINDS:
         raise ValueError(f"kind must be one of {sorted(FORM_KINDS)}")
     if kind == "discord":
+        # A discord-bot stamp is an attestation only the bot can make. GitHub sets
+        # issue.user.login, so an issue authored by a bot account is the one artifact
+        # a stranger cannot produce. Anyone else's "discord" issue is refused here --
+        # never recorded at tier 0 with fabricated proof fields.
+        if login not in netindex.DISCORD_BOT_SUBMITTERS:
+            raise ValueError(
+                "a Discord community is listed by the Aither bot, which is in the server "
+                "and can see you hold Manage Server. Add the bot and ask it to list your "
+                "server; a listing typed into this form cannot prove ownership.")
         return _discord_record(form, login, today)
     url = form.get("url", "").strip()
     parts = urlsplit(url)
@@ -93,11 +107,13 @@ def record_from(form: dict, login: str, today: dt.date) -> dict:
 def _discord_record(form: dict, login: str, today: dt.date) -> dict:
     """A Discord community: a permanent invite, the server id, the approving manager.
 
-    The Aither bot is IN the server and observed that manager hold Manage Server when
-    they asked, so this record carries ``method: discord-bot`` -- the standing a site
-    gets by serving ``/.well-known/aithernet.json``. Any one of the three missing is a
-    refusal: a partial claim is not the proof, and this record publishes only what the
-    manager chose to publish (invite, server id, a coarse member band, tags).
+    Called only for an issue authored by an account in ``DISCORD_BOT_SUBMITTERS`` --
+    the bot's own identity. That issue is the authenticated artifact: the bot is IN the
+    server, observed the manager hold Manage Server when they asked, and is the only
+    party that can file as itself. Any one of the three fields missing is a refusal: a
+    partial claim is not the proof. The record publishes only what the manager chose
+    to publish (invite, server id, a coarse member band, tags) -- never a description,
+    an address or any other free text from the form.
     """
     url = form.get("url", "").strip()
     if not netindex.DISCORD_INVITE_RE.match(url):
@@ -116,9 +132,9 @@ def _discord_record(form: dict, login: str, today: dt.date) -> dict:
     band = " ".join(form.get("member band", "").split())
     if band:
         listing["member_band"] = band
-    about = " ".join(form.get("about", "").split())
-    if about:
-        listing["description"] = about[:500]
+    # Deliberately no "about"/description: a Discord listing carries the guild and a
+    # band only. Free text from a form is where personal data leaks into a public,
+    # machine-readable record (NI010 refuses it).
     rid = f"discord_{guild}"
     prov = {"added_by": f"github:{login}", "sources": [url],
             "validated": {"at": today.isoformat(), "by": "aithernet-bot",
@@ -164,13 +180,20 @@ def _self_test() -> int:
                  "kind": "discord", "tags": "Gardening, seeds",
                  "discord server id": guild, "requested by": mgr,
                  "member band": "100-499", "about": "A  community for seed savers"}
-    dr = record_from(good_form, "aithernet-bot", day)
+    bot = netindex.DISCORD_BOT_SUBMITTERS[0]
+    dr = record_from(good_form, bot, day)
     ok &= (dr["id"] == "discord_" + guild and dr["kind"] == "discord"
-           and dr["listing"] == {"guild": guild, "member_band": "100-499",
-                                 "description": "A community for seed savers"}
+           and dr["listing"] == {"guild": guild, "member_band": "100-499"}
+           and dr["provenance"]["added_by"] == f"github:{bot}"
            and dr["provenance"]["validated"] == {
                "at": day.isoformat(), "by": "aithernet-bot", "method": "discord-bot",
                "guild": guild, "requested_by": mgr})
+    # The same form from any other login is refused: form text proves nothing.
+    try:
+        record_from(good_form, "randomstranger", day)
+        ok = False
+    except ValueError:
+        pass
     for bad in ({**good_form, "url": "https://example.com/x"},
                 {**good_form, "discord server id": "42"},
                 {**good_form, "requested by": "someone"},
@@ -178,7 +201,7 @@ def _self_test() -> int:
                 {k: v for k, v in good_form.items() if k != "discord server id"},
                 {**good_form, "member band": "lots"}):
         try:
-            record_from(bad, "m", day)
+            record_from(bad, bot, day)
             ok = False
         except ValueError:
             pass

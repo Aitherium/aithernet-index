@@ -52,10 +52,12 @@ https://index.aitherium.com/claim/
 A Discord server cannot serve that file, so it is listed through the Aither bot instead.
 Add the bot, ask it to list the server, and staff approve it. The bot is *in* the server
 and observed you hold **Manage Server** there, which is the Discord form of owner proof:
-the entry is marked **owner-proven by the Aither bot**. It carries the permanent invite,
-the server id, your tags and an optional member band, and nothing else. `verify.py`
-re-resolves the invite through Discord's public API and marks the entry stale when the
-invite stops working.
+the entry is marked **owner-proven by the Aither bot**. The stamp is minted only for the
+issue the bot files under its own GitHub account, so a listing typed into the public form
+cannot claim it. It carries the permanent invite, the server id, your tags and an optional
+member band, and nothing else. `verify.py` re-resolves the invite through Discord's public
+API (liveness only) and marks the entry stale when the invite stops working; with a bot
+token, `verify.py --discord-attest` re-checks Manage Server itself.
 
 ## For agents
 

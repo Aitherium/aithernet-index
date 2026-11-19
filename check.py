@@ -2,7 +2,7 @@
 """Validate the git-tracked AitherNet Index (records/).
 
 Exit 0 clean, 1 violation, 2 could not judge (no records found / unreadable root).
-Rules NI000-NI010 live in ``netindex.py::validate``.
+Rules NI000-NI012 live in ``netindex.py::validate``.
 
     python check.py
     python check.py --resolve docs.aither
@@ -56,7 +56,7 @@ def _discord(**over: object) -> dict:
     rec = {"id": "discord_" + _GUILD, "kind": "discord", "title": "Seed Library",
            "url": "https://discord.gg/abc123", "tags": ["gardening", "seeds"],
            "listing": {"guild": _GUILD, "member_band": "100-499"},
-           "provenance": {"added_by": "github:aithernet-bot",
+           "provenance": {"added_by": "github:" + netindex.DISCORD_BOT_SUBMITTERS[0],
                           "sources": ["https://discord.gg/abc123"], "validated": stamp}}
     rec.update(over)
     return rec
@@ -78,6 +78,14 @@ def _self_test() -> int:
                         "vouches": [{"by": "t", "at": "2026-01-02"}]}}], {"NI009"}),
         "future validation": ([{**good, "provenance": {**good["provenance"], "validated":
                                {"at": "2999-01-01", "by": "t", "method": "m"}}}], {"NI008"}),
+        "owner-asserted by a stranger": ([{**good, "provenance": {
+            "added_by": "github:attacker", "sources": ["x"],
+            "validated": {"at": "2026-01-01", "by": "github:attacker",
+                          "method": "owner-asserted"}}}], {"NI008"}),
+        "owner-asserted by the operator": ([{**good, "provenance": {
+            "added_by": "aither", "sources": ["x"],
+            "validated": {"at": "2026-01-01", "by": "aither",
+                          "method": "owner-asserted"}}}], set()),
         "good business": ([{**good, "kind": "business", "listing": {
             "description": "Bakery", "category": "bakery", "address": "1 Main St",
             "area_served": "Springfield", "phone": "+1 (555) 010-0000", "email": "hi@a.example",
@@ -120,6 +128,26 @@ def _self_test() -> int:
         "discord listing knows only its facts": ([_discord(listing={"guild": _GUILD,
                                                                     "members": ["a", "b"]})],
                                                  {"NI010"}),
+        # -- no personal data may reach a Discord listing (NI010) ---------------------
+        "discord listing with an email": ([_discord(listing={"guild": _GUILD,
+                                                             "email": "a@b.example"})],
+                                          {"NI010"}),
+        "discord listing with a phone": ([_discord(listing={"guild": _GUILD,
+                                                            "phone": "+1 555 010 0000"})],
+                                         {"NI010"}),
+        "discord listing with a description": ([_discord(listing={"guild": _GUILD,
+                                                                  "description": "hi"})],
+                                               {"NI010"}),
+        # -- the stamp is only ever the bot's (NI012) ---------------------------------
+        "discord entry proved by anything else": ([_discord(stamp={"method": "owner-asserted",
+                                                                   "guild": None,
+                                                                   "requested_by": None})],
+                                                  {"NI008", "NI012"}),
+        "discord-bot stamp from a stranger": ([_discord(provenance={
+            "added_by": "github:attacker", "sources": ["https://discord.gg/abc123"],
+            "validated": {"at": "2026-01-01", "by": "aithernet-bot",
+                          "method": "discord-bot", "guild": _GUILD,
+                          "requested_by": _MGR}})], {"NI012"}),
     }
     ok = True
     for label, (raws, want) in cases.items():
@@ -143,10 +171,22 @@ def _self_test() -> int:
     stale["provenance"] = {**stale["provenance"],
                            "stale": {"at": "2026-02-01", "reason": "invite did not resolve"}}
     d_stale = netindex.trust(netindex._parse(None, stale))
-    d_ok = [d_tier, d_stale] == [2, 0]
+    # An unauthenticated claim ("owner-asserted") is not evidence and never ranks 2.
+    asserted = netindex.trust(netindex._parse(None, _discord(
+        stamp={"method": "owner-asserted", "guild": None, "requested_by": None})))
+    stranger = netindex.trust(netindex._parse(None, {**good, "provenance": {
+        "added_by": "github:attacker", "sources": ["x"],
+        "validated": {"at": "2026-01-01", "by": "github:attacker",
+                      "method": "owner-asserted"}}}))
+    operator = netindex.trust(netindex._parse(None, {**good, "provenance": {
+        "added_by": "aither", "sources": ["x"],
+        "validated": {"at": "2026-01-01", "by": "aither",
+                      "method": "owner-asserted"}}}))
+    d_ok = [d_tier, d_stale, asserted, stranger, operator] == [2, 0, 0, 0, 2]
     ok &= d_ok
-    print(f"{'PASS' if d_ok else 'FAIL'} discord-bot ranks with owner-proven; stale drops: "
-          f"want [2, 0] got {[d_tier, d_stale]}")
+    print(f"{'PASS' if d_ok else 'FAIL'} discord-bot ranks with owner-proven; stale drops; "
+          f"bare assertions do not: want [2, 0, 0, 0, 2] got "
+          f"{[d_tier, d_stale, asserted, stranger, operator]}")
     def _ev(e):
         return netindex.trust(netindex._parse(None, {**v2, "provenance": {
             **v2["provenance"], "evidence": e}}))
