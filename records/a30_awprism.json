@@ -1,0 +1,31 @@
+{
+  "id": "a30_awprism",
+  "kind": "app",
+  "title": "awprism -- Turn a failure into ranked hypotheses \u2014 and say what would confirm each one.",
+  "url": "https://a30.link/awprism",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awprism/"
+  },
+  "download": {
+    "slug": "awprism",
+    "short": "https://a30.link/awprism",
+    "target": "https://aitherium.github.io/awprism/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:59+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

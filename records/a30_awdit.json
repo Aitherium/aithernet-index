@@ -1,0 +1,31 @@
+{
+  "id": "a30_awdit",
+  "kind": "app",
+  "title": "awdit -- An append-only audit trail whose gaps are DETECTABLE.",
+  "url": "https://a30.link/awdit",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awdit/"
+  },
+  "download": {
+    "slug": "awdit",
+    "short": "https://a30.link/awdit",
+    "target": "https://aitherium.github.io/awdit/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:23+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

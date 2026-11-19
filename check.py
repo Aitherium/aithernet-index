@@ -76,6 +76,18 @@ def _self_test() -> int:
         "bad geo": ([{**good, "listing": {"geo": {"lat": 200, "lng": 0}}}], {"NI010"}),
         "http same_as": ([{**good, "listing": {"same_as": ["http://a"]}}], {"NI010"}),
         "listing not object": ([{**good, "listing": "open 9-5"}], {"NI010"}),
+        "good download": ([{**good, "kind": "app", "url": "https://a30.link/x", "download": {
+            "slug": "x", "short": "https://a30.link/x", "target": "https://dl.example/x.apk",
+            "sha256": "a" * 64, "asset": "x.apk"}}], set()),
+        "download short mismatch": ([{**good, "kind": "app", "download": {
+            "slug": "x", "short": "https://a30.link/y", "target": "https://dl.example/x"}}],
+            {"NI011"}),
+        "download bad sha": ([{**good, "kind": "artifact", "download": {
+            "slug": "x", "short": "https://a30.link/x", "target": "https://d.example/x",
+            "sha256": "nope"}}], {"NI011"}),
+        "download http target": ([{**good, "kind": "model", "download": {
+            "slug": "x", "short": "https://a30.link/x", "target": "http://d.example/x"}}],
+            {"NI011"}),
     }
     ok = True
     for label, (raws, want) in cases.items():

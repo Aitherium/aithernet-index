@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrise",
+  "kind": "app",
+  "title": "awrise -- Wake an agent on a schedule, let it do one thing, and put it back to sleep.",
+  "url": "https://a30.link/awrise",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awrise/"
+  },
+  "download": {
+    "slug": "awrise",
+    "short": "https://a30.link/awrise",
+    "target": "https://aitherium.github.io/awrise/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:32+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

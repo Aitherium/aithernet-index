@@ -1,0 +1,31 @@
+{
+  "id": "a30_awkno_dl",
+  "kind": "artifact",
+  "title": "awkno -- newest release",
+  "url": "https://a30.link/awkno/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awkno/releases/latest"
+  },
+  "download": {
+    "slug": "awkno/dl",
+    "short": "https://a30.link/awkno/dl",
+    "target": "https://github.com/Aitherium/awkno/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:12+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

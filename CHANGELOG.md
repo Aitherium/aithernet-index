@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - 2026-11-19
+
+- **Downloads are entries.** New kinds `app`, `model` and `artifact` for things a person
+  downloads, each behind an `https://a30.link/<slug>` short link. Their facts live in a
+  `download` object (`slug`, `short`, `target`, optional `sha256` and `asset`), shown on
+  the entry page and published in `index.json`. New rule **NI011** validates it.
+- `a30.link` is a first-party host: its entries redirect off-host by design and are
+  outside the backlink rule, like `aitherium.com`.
+
 ## 0.5.1 - 2026-11-18
 
 Hardening of the daily re-check after review. Every entry point now fails closed.

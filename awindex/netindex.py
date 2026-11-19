@@ -35,8 +35,13 @@ DEFAULT_ROOT = Path(os.environ.get("AWINDEX_ROOT")
 # business = a place or company that wants to be found (hours, area, contact): its
 # facts live in ``listing`` and are published as schema.org data search engines and
 # AI agents read. Claiming one is the same owner proof as any record (well-known).
+# app / model / artifact = a download behind an a30.link short link: its facts live in
+# ``download`` (slug, short, target, sha256), validated by NI011.
 KINDS = {"site", "service", "org", "gate", "world", "dataset",
-         "garden", "room", "space", "business"}
+         "garden", "room", "space", "business", "app", "model", "artifact"}
+DOWNLOAD_KEYS = {"slug", "short", "target", "sha256", "asset"}
+SHORT_PREFIX = "https://a30.link/"
+_SHA256 = re.compile("^[0-9a-f]{64}$")
 ROUTE_TYPES = {"web", "aithernet", "relay-gate", "world", "relay-room", "space"}
 EDGE_RELS = {"owned_by", "links_to", "mirrors", "part_of", "bridges", "about", "alternative_to"}
 NAME_SUFFIX = ".aither"
@@ -76,6 +81,7 @@ class Record:
     edges: list = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
     listing: dict = field(default_factory=dict)
+    download: dict = field(default_factory=dict)
     path: Optional[Path] = None
 
 
@@ -92,6 +98,8 @@ def _parse(path: Path, raw: dict) -> Record:
         provenance=dict(raw.get("provenance") or {}),
         listing=raw["listing"] if isinstance(raw.get("listing"), dict) else (
             {"_invalid": True} if raw.get("listing") is not None else {}),
+        download=raw["download"] if isinstance(raw.get("download"), dict) else (
+            {"_invalid": True} if raw.get("download") is not None else {}),
         path=path,
     )
 
@@ -181,6 +189,27 @@ def validate(records: Iterable[Record], today: Optional[_dt.date] = None) -> "li
                 out.append(Finding("NI009", rid, f"{who} vouched twice"))
             seen.add(who)
         out += listing_findings(rid, r.kind, r.url, r.listing)
+        out += download_findings(rid, r.download)
+    return out
+
+
+def download_findings(rid: str, download: dict) -> "list[Finding]":
+    """NI011: a download names its a30.link short link, an https target, a real sha256."""
+    if not download:
+        return []
+    if download.get("_invalid"):
+        return [Finding("NI011", rid, "download must be an object")]
+    out = []
+    for k in sorted(set(download) - DOWNLOAD_KEYS):
+        out.append(Finding("NI011", rid, f"unknown download field {k!r}"))
+    slug, short = download.get("slug"), download.get("short")
+    if not isinstance(slug, str) or not slug or short != SHORT_PREFIX + str(slug):
+        out.append(Finding("NI011", rid, f"download.short must be {SHORT_PREFIX}<slug>"))
+    if not str(download.get("target") or "").startswith("https://"):
+        out.append(Finding("NI011", rid, "download.target must be an https url"))
+    sha = download.get("sha256")
+    if sha is not None and not (isinstance(sha, str) and _SHA256.match(sha)):
+        out.append(Finding("NI011", rid, "download.sha256 must be 64 lowercase hex chars"))
     return out
 
 

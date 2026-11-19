@@ -1,0 +1,31 @@
+{
+  "id": "a30_awbrowse",
+  "kind": "app",
+  "title": "awbrowse -- A portable browser client \u2014 navigate, console, network, DOM, screenshot.",
+  "url": "https://a30.link/awbrowse",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awbrowse/"
+  },
+  "download": {
+    "slug": "awbrowse",
+    "short": "https://a30.link/awbrowse",
+    "target": "https://aitherium.github.io/awbrowse/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:02+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

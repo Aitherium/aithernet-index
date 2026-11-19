@@ -1,0 +1,31 @@
+{
+  "id": "a30_awpredict",
+  "kind": "app",
+  "title": "awpredict -- Predict what your environment does next, and how surprised you were.",
+  "url": "https://a30.link/awpredict",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awpredict/"
+  },
+  "download": {
+    "slug": "awpredict",
+    "short": "https://a30.link/awpredict",
+    "target": "https://aitherium.github.io/awpredict/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:53+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

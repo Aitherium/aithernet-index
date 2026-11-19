@@ -1,0 +1,31 @@
+{
+  "id": "a30_awreason_dl",
+  "kind": "artifact",
+  "title": "awreason -- newest release",
+  "url": "https://a30.link/awreason/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awreason/releases/latest"
+  },
+  "download": {
+    "slug": "awreason/dl",
+    "short": "https://a30.link/awreason/dl",
+    "target": "https://github.com/Aitherium/awreason/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:08+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

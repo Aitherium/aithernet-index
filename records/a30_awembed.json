@@ -1,0 +1,31 @@
+{
+  "id": "a30_awembed",
+  "kind": "app",
+  "title": "awembed -- Train an embedding model that knows your corpus, and prove it beats the big one.",
+  "url": "https://a30.link/awembed",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awembed/"
+  },
+  "download": {
+    "slug": "awembed",
+    "short": "https://a30.link/awembed",
+    "target": "https://aitherium.github.io/awembed/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:30+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

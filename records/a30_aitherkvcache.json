@@ -1,0 +1,31 @@
+{
+  "id": "a30_aitherkvcache",
+  "kind": "app",
+  "title": "aitherkvcache -- Near-optimal KV cache quantization for LLM inference \u2014 sub-byte compression.",
+  "url": "https://a30.link/aitherkvcache",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/aitherkvcache/"
+  },
+  "download": {
+    "slug": "aitherkvcache",
+    "short": "https://a30.link/aitherkvcache",
+    "target": "https://aitherium.github.io/aitherkvcache/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:43+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

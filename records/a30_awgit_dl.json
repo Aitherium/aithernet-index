@@ -1,0 +1,31 @@
+{
+  "id": "a30_awgit_dl",
+  "kind": "artifact",
+  "title": "awgit -- newest release",
+  "url": "https://a30.link/awgit/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awgit/releases/latest"
+  },
+  "download": {
+    "slug": "awgit/dl",
+    "short": "https://a30.link/awgit/dl",
+    "target": "https://github.com/Aitherium/awgit/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:52+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

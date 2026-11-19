@@ -1,0 +1,31 @@
+{
+  "id": "a30_awsprite",
+  "kind": "app",
+  "title": "awsprite -- Hatch a companion that grows only from what you teach it, then take it home.",
+  "url": "https://a30.link/awsprite",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awsprite/"
+  },
+  "download": {
+    "slug": "awsprite",
+    "short": "https://a30.link/awsprite",
+    "target": "https://aitherium.github.io/awsprite/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:10+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

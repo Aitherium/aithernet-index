@@ -1,0 +1,31 @@
+{
+  "id": "a30_awfind_dl",
+  "kind": "artifact",
+  "title": "awfind -- newest release",
+  "url": "https://a30.link/awfind/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awfind/releases/latest"
+  },
+  "download": {
+    "slug": "awfind/dl",
+    "short": "https://a30.link/awfind/dl",
+    "target": "https://github.com/Aitherium/awfind/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:36+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

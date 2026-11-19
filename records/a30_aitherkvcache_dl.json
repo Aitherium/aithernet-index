@@ -1,0 +1,31 @@
+{
+  "id": "a30_aitherkvcache_dl",
+  "kind": "artifact",
+  "title": "aitherkvcache -- newest release",
+  "url": "https://a30.link/aitherkvcache/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/aitherkvcache/releases/download/hf-Comfy-Org--Wan_2.2_ComfyUI_Repackaged-i2v-fp8/umt5_xxl_fp8_e4m3fn_scaled.safetensors.part0"
+  },
+  "download": {
+    "slug": "aitherkvcache/dl",
+    "short": "https://a30.link/aitherkvcache/dl",
+    "target": "https://github.com/Aitherium/aitherkvcache/releases/download/hf-Comfy-Org--Wan_2.2_ComfyUI_Repackaged-i2v-fp8/umt5_xxl_fp8_e4m3fn_scaled.safetensors.part0"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:46+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

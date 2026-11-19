@@ -1,0 +1,31 @@
+{
+  "id": "a30_awnode",
+  "kind": "app",
+  "title": "awnode -- A lightweight local gateway \u2014 bridges your apps to the AI backends you chose.",
+  "url": "https://a30.link/awnode",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awnode/"
+  },
+  "download": {
+    "slug": "awnode",
+    "short": "https://a30.link/awnode",
+    "target": "https://aitherium.github.io/awnode/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:42+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

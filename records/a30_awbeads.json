@@ -1,0 +1,31 @@
+{
+  "id": "a30_awbeads",
+  "kind": "app",
+  "title": "awbeads -- A spatial canvas for a page \u2014 arrange things, connect them, and keep the arrangement.",
+  "url": "https://a30.link/awbeads",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awbeads/"
+  },
+  "download": {
+    "slug": "awbeads",
+    "short": "https://a30.link/awbeads",
+    "target": "https://aitherium.github.io/awbeads/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:58+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awbonsai",
+  "kind": "app",
+  "title": "awbonsai -- Run a real model in the visitor's own browser \u2014 no server round trip, no upload.",
+  "url": "https://a30.link/awbonsai",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awbonsai/"
+  },
+  "download": {
+    "slug": "awbonsai",
+    "short": "https://a30.link/awbonsai",
+    "target": "https://aitherium.github.io/awbonsai/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:59+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

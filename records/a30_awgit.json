@@ -1,0 +1,31 @@
+{
+  "id": "a30_awgit",
+  "kind": "app",
+  "title": "awgit -- Semantic version control on top of git \u2014 edit-ops and leases.",
+  "url": "https://a30.link/awgit",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awgit/"
+  },
+  "download": {
+    "slug": "awgit",
+    "short": "https://a30.link/awgit",
+    "target": "https://aitherium.github.io/awgit/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:49+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

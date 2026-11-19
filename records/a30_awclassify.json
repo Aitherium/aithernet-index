@@ -1,0 +1,31 @@
+{
+  "id": "a30_awclassify",
+  "kind": "app",
+  "title": "awclassify -- Classify any document -- what it is, who may read it, who it is for, what it is about.",
+  "url": "https://a30.link/awclassify",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awclassify/"
+  },
+  "download": {
+    "slug": "awclassify",
+    "short": "https://a30.link/awclassify",
+    "target": "https://aitherium.github.io/awclassify/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:07+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

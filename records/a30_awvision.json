@@ -1,0 +1,31 @@
+{
+  "id": "a30_awvision",
+  "kind": "app",
+  "title": "awvision -- See an image \u2014 describe it, ask it a question, compare two.",
+  "url": "https://a30.link/awvision",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awvision/"
+  },
+  "download": {
+    "slug": "awvision",
+    "short": "https://a30.link/awvision",
+    "target": "https://aitherium.github.io/awvision/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:24+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrelay",
+  "kind": "app",
+  "title": "awrelay -- Portable agent messaging \u2014 findings, alerts, coordination.",
+  "url": "https://a30.link/awrelay",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awrelay/"
+  },
+  "download": {
+    "slug": "awrelay",
+    "short": "https://a30.link/awrelay",
+    "target": "https://aitherium.github.io/awrelay/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:18+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

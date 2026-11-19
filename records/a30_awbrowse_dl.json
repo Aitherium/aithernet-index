@@ -1,0 +1,31 @@
+{
+  "id": "a30_awbrowse_dl",
+  "kind": "artifact",
+  "title": "awbrowse -- newest release",
+  "url": "https://a30.link/awbrowse/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awbrowse/releases/latest"
+  },
+  "download": {
+    "slug": "awbrowse/dl",
+    "short": "https://a30.link/awbrowse/dl",
+    "target": "https://github.com/Aitherium/awbrowse/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:55:03+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

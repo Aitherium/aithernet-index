@@ -1,0 +1,31 @@
+{
+  "id": "a30_awrecover",
+  "kind": "app",
+  "title": "awrecover -- Labelled snapshots with an all-or-nothing restore.",
+  "url": "https://a30.link/awrecover",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awrecover/"
+  },
+  "download": {
+    "slug": "awrecover",
+    "short": "https://a30.link/awrecover",
+    "target": "https://aitherium.github.io/awrecover/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:57:10+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

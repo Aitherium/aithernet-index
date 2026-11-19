@@ -1,0 +1,31 @@
+{
+  "id": "a30_awstorage",
+  "kind": "app",
+  "title": "awstorage -- Every drive on every node, indexed, classified and diffed -- so you can see what you own before you delete it.",
+  "url": "https://a30.link/awstorage",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awstorage/"
+  },
+  "download": {
+    "slug": "awstorage",
+    "short": "https://a30.link/awstorage",
+    "target": "https://aitherium.github.io/awstorage/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:12+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

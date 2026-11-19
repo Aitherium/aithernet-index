@@ -68,7 +68,9 @@ EXEMPT_KINDS = {"discord", "community"}
 EXEMPT_HOSTS = {"discord.gg", "discord.com", "discordapp.com", "discord.media"}
 # First-party services (Aitherium's own relay rooms/docs/blogs) are not asked to carry a
 # backlink to themselves; they are covered by the integrity of our own deployment.
-FIRST_PARTY_HOSTS = {"aitherium.com"}
+# a30.link is Aitherium's own short-link service: its entries point at downloads and
+# repos that redirect off-host by design, and it serves /.well-known/aithernet.json.
+FIRST_PARTY_HOSTS = {"aitherium.com", "a30.link"}
 
 FORMS = ("well-known", "link-rel", "meta", "visible-link")
 _SKIP = {"script", "style", "noscript", "svg", "template"}

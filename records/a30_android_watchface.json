@@ -1,0 +1,33 @@
+{
+  "id": "a30_android_watchface",
+  "kind": "app",
+  "title": "Aither watch face (APK)",
+  "url": "https://a30.link/android/watchface",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awdk/releases/download/aither-android-v0.4.4/aither-watchface-0.1.0.apk"
+  },
+  "download": {
+    "slug": "android/watchface",
+    "short": "https://a30.link/android/watchface",
+    "target": "https://github.com/Aitherium/awdk/releases/download/aither-android-v0.4.4/aither-watchface-0.1.0.apk",
+    "sha256": "12c92cd392b19f42f5c58156695149a3b95d1a603fa93cdb00f93ea8c8c7e00f",
+    "asset": "aither-watchface-0.1.0.apk"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:35+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

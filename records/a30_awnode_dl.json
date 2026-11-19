@@ -1,0 +1,31 @@
+{
+  "id": "a30_awnode_dl",
+  "kind": "artifact",
+  "title": "awnode -- newest release",
+  "url": "https://a30.link/awnode/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awnode/releases/latest"
+  },
+  "download": {
+    "slug": "awnode/dl",
+    "short": "https://a30.link/awnode/dl",
+    "target": "https://github.com/Aitherium/awnode/releases/latest"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:44+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

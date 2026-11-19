@@ -1,0 +1,31 @@
+{
+  "id": "a30_aitherzero",
+  "kind": "app",
+  "title": "AitherZero -- PowerShell 7+ automation framework \u2014 numbered, self-describing scripts.",
+  "url": "https://a30.link/aitherzero",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/AitherZero/"
+  },
+  "download": {
+    "slug": "aitherzero",
+    "short": "https://a30.link/aitherzero",
+    "target": "https://aitherium.github.io/AitherZero/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:47+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

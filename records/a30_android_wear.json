@@ -1,0 +1,33 @@
+{
+  "id": "a30_android_wear",
+  "kind": "app",
+  "title": "Aither for Wear OS (APK)",
+  "url": "https://a30.link/android/wear",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awdk/releases/download/aither-android-v0.4.4/aither-wear-0.4.4.apk"
+  },
+  "download": {
+    "slug": "android/wear",
+    "short": "https://a30.link/android/wear",
+    "target": "https://github.com/Aitherium/awdk/releases/download/aither-android-v0.4.4/aither-wear-0.4.4.apk",
+    "sha256": "f26df3629a24c9a9a28b6dd83ab0aee78414ff4c9a37dc81bd7040754124fb02",
+    "asset": "aither-wear-0.4.4.apk"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:54:31+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

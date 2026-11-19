@@ -1,0 +1,31 @@
+{
+  "id": "a30_awmail",
+  "kind": "app",
+  "title": "awmail -- Give an agent an email address \u2014 send, and actually receive.",
+  "url": "https://a30.link/awmail",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awmail/"
+  },
+  "download": {
+    "slug": "awmail",
+    "short": "https://a30.link/awmail",
+    "target": "https://aitherium.github.io/awmail/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:56:23+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

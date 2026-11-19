@@ -1,0 +1,31 @@
+{
+  "id": "a30_awvoice",
+  "kind": "app",
+  "title": "awvoice -- Hear and speak \u2014 transcribe audio, synthesize a voice.",
+  "url": "https://a30.link/awvoice",
+  "tags": [
+    "a30.link",
+    "app"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://aitherium.github.io/awvoice/"
+  },
+  "download": {
+    "slug": "awvoice",
+    "short": "https://a30.link/awvoice",
+    "target": "https://aitherium.github.io/awvoice/"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:26+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}

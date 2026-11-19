@@ -1,0 +1,31 @@
+{
+  "id": "a30_awsh_dl",
+  "kind": "artifact",
+  "title": "awsh -- newest release",
+  "url": "https://a30.link/awsh/dl",
+  "tags": [
+    "a30.link",
+    "artifact"
+  ],
+  "route": {
+    "type": "web",
+    "target": "https://github.com/Aitherium/awsh/releases/download/v1.19.8/aither-shell-linux-x64"
+  },
+  "download": {
+    "slug": "awsh/dl",
+    "short": "https://a30.link/awsh/dl",
+    "target": "https://github.com/Aitherium/awsh/releases/download/v1.19.8/aither-shell-linux-x64"
+  },
+  "provenance": {
+    "added_by": "agent:a30link",
+    "sources": [
+      "a30.link slug table"
+    ],
+    "generated_at": "2026-11-19T21:58:00+00:00",
+    "validated": {
+      "at": "2026-11-19",
+      "by": "agent:a30link",
+      "method": "first-party"
+    }
+  }
+}
