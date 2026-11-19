@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -149,6 +150,140 @@ class RuleTests(unittest.TestCase):
         results = lg.judge(self.record(), self.ctx())
         self.assertEqual(lg.overall(results), lg.PASS)
         self.assertTrue(any(r.status == lg.SKIP for r in results))
+
+
+def _discord_raw(**over):
+    """A Discord record whose stamp looks exactly like the intake bot's."""
+    raw = {"id": "discord_123456789012345678", "kind": "discord",
+           "url": "https://discord.gg/abcdef",
+           "listing": {"guild": "123456789012345678"},
+           "provenance": {"added_by": "github:aither-wzns",
+                          "sources": ["https://discord.gg/abcdef"],
+                          "validated": {"at": "2026-11-19", "by": "aithernet-bot",
+                                        "method": "discord-bot",
+                                        "guild": "123456789012345678",
+                                        "requested_by": "discord:42"}}}
+    raw.update(over)
+    return raw
+
+
+class ProvenanceTests(unittest.TestCase):
+    """A Discord / bot-stamped record must come from the intake bot's own PR."""
+
+    def ctx(self, author):
+        config = lg.rep.load_config(
+            Path(__file__).resolve().parents[1] / "tools" / "gate_config.json")
+        return lg.Context(config=config, existing_hosts=[], labels=[], offline=True,
+                          pr_author=author)
+
+    def verdict(self, rec, author):
+        results = lg.judge(rec, self.ctx(author))
+        return lg.overall(results), [r for r in results if r.rule == "provenance"]
+
+    def test_hand_written_pr_adding_a_bot_stamped_discord_record_fails(self):
+        rec = lg.parse_record("records/d.json", _discord_raw())
+        for human in ("aither-wzns", "randomstranger", "aithernet-bot"):
+            verdict, proof = self.verdict(rec, human)
+            self.assertEqual(verdict, lg.FAIL, human)
+            self.assertEqual(proof[0].status, lg.FAIL)
+            self.assertIn(human, proof[0].reason)
+
+    def test_intake_bot_pr_adding_a_discord_record_passes(self):
+        rec = lg.parse_record("records/d.json", _discord_raw())
+        verdict, proof = self.verdict(rec, "github-actions[bot]")
+        self.assertEqual(verdict, lg.PASS)
+        self.assertEqual(proof[0].status, lg.PASS)
+
+    def test_unknown_author_fails_closed(self):
+        rec = lg.parse_record("records/d.json", _discord_raw())
+        verdict, proof = self.verdict(rec, "")
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("unknown author", proof[0].reason)
+
+    def test_bot_stamp_on_a_site_record_needs_the_bot(self):
+        raw = {"id": "r1", "kind": "site", "url": "https://example.com/",
+               "provenance": {"validated": {"method": "discord-bot"}}}
+        verdict, proof = self.verdict(lg.parse_record("records/r1.json", raw), "someone")
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertEqual(proof[0].status, lg.FAIL)
+
+    def test_human_altering_an_existing_discord_stamp_fails(self):
+        before = _discord_raw()
+        after = _discord_raw()
+        after["provenance"]["validated"]["at"] = "2026-12-01"
+        rec = lg.parse_record("records/d.json", after, before)
+        self.assertEqual(self.verdict(rec, "aither-wzns")[0], lg.FAIL)
+
+    def test_human_rekinding_a_discord_record_to_site_fails(self):
+        before = _discord_raw()
+        after = {"id": before["id"], "kind": "site", "url": "https://example.com/"}
+        rec = lg.parse_record("records/d.json", after, before)
+        verdict, proof = self.verdict(rec, "aither-wzns")
+        self.assertEqual(verdict, lg.FAIL)
+        self.assertIn("changes a record", proof[0].reason)
+
+    def test_plain_site_record_needs_no_bot(self):
+        rec = lg.parse_record("records/r1.json",
+                              {"id": "r1", "kind": "site", "url": "https://example.com/"})
+        verdict, proof = self.verdict(rec, "aither-wzns")
+        self.assertEqual(proof, [])
+        self.assertEqual(verdict, lg.PASS)
+
+    def test_name_status_paths_keep_the_renamed_from_path(self):
+        self.assertEqual(lg.parse_name_status_paths(
+            "A\trecords/a.json\nR090\trecords/old.json\trecords/new.json\n"),
+            [("A", "records/a.json", "records/a.json"),
+             ("R", "records/old.json", "records/new.json")])
+
+    def test_load_targets_reads_the_base_record_from_git(self):
+        import shutil
+        import subprocess
+        import tempfile
+        from types import SimpleNamespace
+
+        if not shutil.which("git"):
+            self.skipTest("git not on PATH")
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+
+        def run(*args):
+            subprocess.run(["git", "-C", tmp, *args], check=True, capture_output=True)
+
+        run("init", "-q")
+        run("config", "user.email", "t@example.invalid")
+        run("config", "user.name", "t")
+        run("config", "core.autocrlf", "false")
+        records = Path(tmp) / "records"
+        records.mkdir()
+        target = records / "d.json"
+        target.write_text(json.dumps(_discord_raw()), encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "base")
+        run("tag", "base")
+        moved = _discord_raw()
+        moved["provenance"]["validated"]["requested_by"] = "discord:7"
+        target.unlink()
+        (records / "d2.json").write_text(json.dumps(moved), encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "head")
+        args = SimpleNamespace(root=tmp, records=None, base="base", head="HEAD")
+        targets, _hosts = lg.load_targets(args)
+        self.assertEqual(len(targets), 1)
+        self.assertEqual(targets[0].base_raw, _discord_raw())
+        self.assertEqual(self.verdict(targets[0], "aither-wzns")[0], lg.FAIL)
+        self.assertEqual(self.verdict(targets[0], "github-actions[bot]")[0], lg.PASS)
+
+    def test_workflow_runs_the_gate_from_the_base_commit_with_the_pr_author(self):
+        wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
+              / "listing-gate.yml").read_text(encoding="utf-8")
+        self.assertIn("github.event.pull_request.user.login", wf)
+        self.assertIn('git worktree add --detach "$RUNNER_TEMP/gate-base" "$BASE_SHA"', wf)
+        self.assertIn('python "$GATE"', wf)
+
+    def test_intake_pr_author_is_the_github_token_identity(self):
+        config = self.ctx("").config
+        self.assertEqual(config["intake_pr_authors"], ["github-actions[bot]"])
+        self.assertIn("discord-bot", config["bot_stamp_methods"])
 
 
 class OutputTests(unittest.TestCase):

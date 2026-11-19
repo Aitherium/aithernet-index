@@ -20,6 +20,11 @@ one verdict per record:
              (keyless skip: it requires a key, and no new CI secret is created)
   lookalike  typosquat / homoglyph / IDN confusable / brand-on-another-domain
              against every listed host and the protected list in gate_config.json
+  provenance a bot-verified record (kind discord/community, or any record that
+             carries a bot stamp such as ``discord-bot``) is added or changed
+             only by a pull request the intake bot opened. The stamp is text in
+             a JSON file and anyone can type it; ``pull_request.user.login`` is
+             set by GitHub and a hand-written PR cannot forge it.
 
 Every network rule has a pure counterpart in ``reputation.py`` /
 ``artifact_check.py`` and a test with a fixture; tests never touch the network.
@@ -75,6 +80,7 @@ class Record:
     url: str
     path: str
     raw: dict
+    base_raw: "Optional[dict]" = None   # the record at the base ref, if it existed
 
 
 @dataclass
@@ -89,6 +95,7 @@ class Context:
     dns_a: object = gate_net.dns_query_a
     tls: object = gate_net.tls_check
     feeds: dict = field(default_factory=dict)
+    pr_author: str = ""   # pull_request.user.login, set by GitHub (never by the PR)
 
     @property
     def age_label_accepted(self) -> bool:
@@ -97,9 +104,9 @@ class Context:
 
 # ── records and git ──────────────────────────────────────────────────────────
 
-def parse_record(path: str, raw: dict) -> Record:
+def parse_record(path: str, raw: dict, base_raw: "Optional[dict]" = None) -> Record:
     return Record(id=str(raw.get("id") or ""), kind=str(raw.get("kind") or ""),
-                  url=str(raw.get("url") or ""), path=path, raw=raw)
+                  url=str(raw.get("url") or ""), path=path, raw=raw, base_raw=base_raw)
 
 
 def url_exempt(rec: Record, config: dict) -> bool:
@@ -126,6 +133,20 @@ def parse_name_status(text: str) -> "List[Tuple[str, str]]":
     return out
 
 
+def parse_name_status_paths(text: str) -> "List[Tuple[str, str, str]]":
+    """``git diff --name-status`` output -> [(status letter, old path, new path)].
+
+    Old and new differ only for a rename (``R100<TAB>old<TAB>new``); the
+    provenance rule needs the old path to see what a renamed record used to be.
+    """
+    out: "List[Tuple[str, str, str]]" = []
+    for line in text.splitlines():
+        parts = [p.strip() for p in line.split("\t")]
+        if len(parts) >= 2 and parts[0]:
+            out.append((parts[0][0], parts[1], parts[-1]))
+    return out
+
+
 def git(repo: "Path | str", *args: str) -> str:
     proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
                           text=True, encoding="utf-8")
@@ -134,14 +155,25 @@ def git(repo: "Path | str", *args: str) -> str:
     return proc.stdout
 
 
-def changed_record_paths(repo: "Path | str", base: str, head: str) -> "List[Tuple[str, str]]":
+def changed_record_paths(repo: "Path | str", base: str,
+                         head: str) -> "List[Tuple[str, str, str]]":
+    """[(status, old path, new path)] for every added/modified/renamed record."""
     diff = git(repo, "diff", "--name-status", "--diff-filter=AMR", "--find-renames",
                f"{base}...{head}", "--", "records")
-    return [(s, p) for s, p in parse_name_status(diff) if p.endswith(".json")]
+    return [(s, old, new) for s, old, new in parse_name_status_paths(diff)
+            if new.endswith(".json")]
 
 
 def read_blob(repo: "Path | str", ref: str, path: str) -> dict:
     return json.loads(git(repo, "show", f"{ref}:{path}"))
+
+
+def base_blob(repo: "Path | str", base: str, path: str) -> "Optional[dict]":
+    """The record at the base ref, or None when it did not exist there."""
+    try:
+        return read_blob(repo, base, path)
+    except (RuntimeError, ValueError):
+        return None
 
 
 def records_at_ref(repo: "Path | str", ref: str) -> "List[Record]":
@@ -175,7 +207,9 @@ def load_targets(args) -> "Tuple[List[Record], List[str]]":
         targets = []
         for path in args.records:
             full = root / path
-            targets.append(parse_record(path, json.loads(full.read_text(encoding="utf-8"))))
+            before = base_blob(root, args.base, path) if args.base else None
+            targets.append(parse_record(path, json.loads(full.read_text(encoding="utf-8")),
+                                        before))
         if args.base:
             existing = records_at_ref(root, args.base)
         else:
@@ -185,10 +219,11 @@ def load_targets(args) -> "Tuple[List[Record], List[str]]":
             raise RuntimeError("need --base and --head, or explicit --records")
         changed = changed_record_paths(root, args.base, args.head)
         targets = []
-        for status, path in changed:
+        for status, old, path in changed:
             if status == "D":
                 continue
-            targets.append(parse_record(path, read_blob(root, args.head, path)))
+            before = base_blob(root, args.base, old) if status in ("M", "R") else None
+            targets.append(parse_record(path, read_blob(root, args.head, path), before))
         existing = records_at_ref(root, args.base)
     existing_hosts = [gate_net.host_of(r.url) for r in existing if r.url]
     return targets, [h for h in existing_hosts if h]
@@ -265,8 +300,11 @@ def health_rule(rec: Record, ctx: Context) -> RuleResult:
 
 def artifact_rule(rec: Record, ctx: Context) -> RuleResult:
     if rec.kind in ctx.config.get("discord_exempt_kinds", []):
+        # Exempt ONLY because the bot checked it, which the provenance rule
+        # proves from the PR author. Without that rule this was a free pass.
         return RuleResult(rec.id, "artifact", PASS,
-                          f"kind {rec.kind!r} is checked by its own bot")
+                          f"kind {rec.kind!r} is checked by its own bot "
+                          f"(the provenance rule proves the bot opened this PR)")
     if url_exempt(rec, ctx.config):
         return RuleResult(rec.id, "artifact", SKIP,
                           f"kind {rec.kind!r} has no page to carry a backlink "
@@ -282,6 +320,68 @@ def artifact_rule(rec: Record, ctx: Context) -> RuleResult:
     if page.error:
         detail = f"page did not answer ({page.error}); {detail}"
     return RuleResult(rec.id, "artifact", FAIL, detail)
+
+
+# ── provenance (who opened the PR) ───────────────────────────────────────────
+
+def _stamp_method(raw: "Optional[dict]") -> str:
+    prov = (raw or {}).get("provenance")
+    validated = prov.get("validated") if isinstance(prov, dict) else None
+    return str(validated.get("method") or "") if isinstance(validated, dict) else ""
+
+
+def _bot_claim(raw: "Optional[dict]", config: dict) -> str:
+    """Why ``raw`` is a bot-verified record, or "" when it is not one."""
+    if not isinstance(raw, dict):
+        return ""
+    kind = str(raw.get("kind") or "")
+    if kind in set(config.get("discord_exempt_kinds", [])):
+        return f"kind {kind!r} is a bot-verified listing"
+    method = _stamp_method(raw)
+    if method and method in set(config.get("bot_stamp_methods", [])):
+        return f"it carries the bot's {method!r} stamp"
+    return ""
+
+
+def bot_provenance_needed(rec: Record, config: dict) -> str:
+    """Why this added/changed record must come from the intake bot, or "".
+
+    The head record is checked (adding a Discord entry, or putting a bot stamp
+    on any record) and so is the base record (editing, re-kinding or stripping
+    the stamp of an existing Discord entry alters the bot's proof).
+    """
+    now = _bot_claim(rec.raw, config)
+    if now:
+        return now
+    before = _bot_claim(rec.base_raw, config)
+    if before and rec.base_raw != rec.raw:
+        return f"it changes a record where {before}"
+    return ""
+
+
+def provenance_rule(rec: Record, ctx: Context) -> "Optional[RuleResult]":
+    """FAIL a bot-verified record unless the intake bot opened this PR.
+
+    ``intake_pr_authors`` (gate_config.json) is the login GitHub puts on a pull
+    request that .github/workflows/intake.yml opens with ``github.token``:
+    ``github-actions[bot]``. ``[`` is not allowed in a user name, so no person
+    can hold it. The bot's other names prove nothing here: ``aithernet-bot`` is
+    a git ``user.name`` and a stamp's ``by`` (both typed text), and the account
+    that files the intake issue also opens hand-written PRs. An unknown author
+    fails closed. Returns None for a record that makes no bot claim.
+    """
+    why = bot_provenance_needed(rec, ctx.config)
+    if not why:
+        return None
+    allowed = [str(a) for a in ctx.config.get("intake_pr_authors", [])]
+    author = (ctx.pr_author or "").strip()
+    if author and author in allowed:
+        return RuleResult(rec.id, "provenance", PASS,
+                          f"{why}; opened by the intake bot ({author})")
+    who = f"authored by {author!r}" if author else "of unknown author (fails closed)"
+    return RuleResult(rec.id, "provenance", FAIL,
+                      f"{why}, but this PR is {who}, not the intake bot {allowed}; "
+                      f"a hand-written PR cannot add or alter the bot's proof")
 
 
 # ── reputation ───────────────────────────────────────────────────────────────
@@ -336,6 +436,13 @@ def lookalike_rule(rec: Record, ctx: Context) -> RuleResult:
 
 def judge(rec: Record, ctx: Context) -> "List[RuleResult]":
     results: "List[RuleResult]" = []
+    try:
+        proof = provenance_rule(rec, ctx)
+        if proof is not None:
+            results.append(proof)
+    except Exception as exc:  # noqa: BLE001 - a broken rule fails, never passes
+        results.append(RuleResult(rec.id, "provenance", FAIL,
+                                  f"{type(exc).__name__}: {exc}"))
     for rule in (lambda r: artifact_rule(r, ctx), lambda r: health_rule(r, ctx)):
         try:
             results.append(rule(rec))
@@ -398,6 +505,9 @@ _FIX = {
     "phishing": "the host is on an active phishing feed; remove the listing",
     "urlhaus": "URLhaus lists the host; remove the listing",
     "lookalike": "the host imitates a listed or protected domain; use the real domain",
+    "provenance": "a Discord/bot-verified listing is filed through the intake issue "
+                  "(the Aither bot) and its PR is opened by the intake workflow; a "
+                  "hand-written PR may not add or edit it",
 }
 
 
@@ -480,7 +590,8 @@ def build_context(args, targets: Sequence[Record], existing_hosts: List[str]) ->
         except ValueError:
             labels = []
     ctx = Context(config=config, existing_hosts=existing_hosts, labels=labels,
-                  timeout=float(args.timeout), offline=args.offline)
+                  timeout=float(args.timeout), offline=args.offline,
+                  pr_author=args.pr_author or "")
     if not args.offline:
         try:
             ctx.feeds = rep.load_feeds()
@@ -496,6 +607,8 @@ def main(argv: "Optional[Sequence[str]]" = None) -> int:
     ap.add_argument("--head", help="head ref/sha to judge")
     ap.add_argument("--records", nargs="*", help="explicit record paths (relative to root)")
     ap.add_argument("--labels-json", default="", help="JSON array of PR label names")
+    ap.add_argument("--pr-author", default=os.environ.get("PR_AUTHOR", ""),
+                    help="pull_request.user.login (default: $PR_AUTHOR)")
     ap.add_argument("--config", default=str(DEFAULT_CONFIG))
     ap.add_argument("--timeout", type=float, default=15)
     ap.add_argument("--offline", action="store_true", help="skip every network rule")

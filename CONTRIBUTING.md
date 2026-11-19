@@ -113,6 +113,17 @@ invite is re-checked by the bot instead. **Failure means:** the page does not
 point back at its entry. Add one of the snippets above (the `.well-known` file is
 the one that also raises trust to *owner-proven*).
 
+**Provenance (Discord and other bot-verified records).** That exemption holds
+only because the bot did the checking, so the gate proves the bot opened the
+pull request: a record of kind `discord`/`community`, or any record carrying a
+`discord-bot` stamp, may be added or changed only by a PR whose GitHub author is
+the intake workflow (`github-actions[bot]`, listed in `intake_pr_authors`). The
+stamp itself is text anyone can type; the PR author is set by GitHub. A
+hand-written PR that adds such a record, edits its stamp, or re-kinds it fails
+`provenance`. To list a Discord server, add the Aither bot to it and ask it; to
+change one, ask the bot again. CI runs the gate and `gate_config.json` from the
+PR's base commit, so a PR cannot loosen the rule it is judged by.
+
 ### 2. Health
 
 The record's https URL must answer 2xx within 15 seconds, with a valid TLS

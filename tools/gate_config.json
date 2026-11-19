@@ -70,6 +70,9 @@
     "parked free, courtesy of"
   ],
   "discord_exempt_kinds": ["discord", "community"],
+  "_provenance_comment": "A bot-verified record (a discord_exempt_kinds kind, or any record whose provenance.validated.method is in bot_stamp_methods) may be added or changed only by a PR whose GitHub author is in intake_pr_authors. intake.yml opens its PR with github.token, so GitHub sets that author to github-actions[bot]; no person can hold that login. CI runs the gate and this file from the PR's BASE commit, so a PR cannot add its own author here.",
+  "intake_pr_authors": ["github-actions[bot]"],
+  "bot_stamp_methods": ["discord-bot"],
   "_no_url_exempt_comment": "Kinds whose entry legitimately has no page: gate/world are route/namespace entries, discord/community are bot-verified invites. A url-less record of any other kind fails the url rules.",
   "no_url_exempt_kinds": ["discord", "community", "gate", "world"],
   "comment_marker": "<!-- listing-gate:start -->"
