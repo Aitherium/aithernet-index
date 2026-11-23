@@ -28,6 +28,13 @@
       "at": "2026-11-19",
       "by": "agent:a30link",
       "method": "first-party"
+    },
+    "evidence": {
+      "by": "shadowbroker",
+      "at": "2026-11-23",
+      "domain_age_days": 360,
+      "sanctions_hits": 0,
+      "threat_level": "LOW"
     }
   }
 }

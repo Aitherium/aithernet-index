@@ -19,10 +19,9 @@
     },
     "evidence": {
       "by": "shadowbroker",
-      "at": "2026-11-18",
-      "domain_age_days": 2089,
-      "sanctions_hits": 0,
-      "threat_level": "LOW"
+      "at": "2026-11-23",
+      "domain_age_days": 2094,
+      "sanctions_hits": 0
     }
   },
   "listing": {
